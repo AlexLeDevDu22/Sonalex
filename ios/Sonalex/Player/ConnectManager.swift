@@ -355,6 +355,10 @@ final class ConnectManager {
             if activeId == myId { activeId = nil }
             player.releaseToRemote()
 
+        case "accountRequest":
+            // Someone asks to join the server (this user is its owner).
+            Community.shared.requestArrived()
+
         case "favorite":
             // Another device (un)favorited a song: show it here at once.
             if let ids = msg["ids"] as? [String], let value = msg["value"] as? Bool {

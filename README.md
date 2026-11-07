@@ -11,7 +11,8 @@ and nothing is sent anywhere but to your server.
 |---|---|
 | Home, new releases, library (artists, albums, songs, favorites, genres, playlists) | **Mix**: DJ-style transitions between songs (beat-matched, never over a voice) |
 | Full-screen player, synced lyrics, queue, smart shuffle | **Connect**: one device plays, the others control it; move playback from iPhone to Mac |
-| Downloads for offline listening | Modules the server owner can turn on (see below) |
+| Downloads for offline listening | **Friends**: several users, a library each, songs shared on disk, profiles and stats |
+| | Modules the server owner can turn on (see below) |
 | AirPlay, lock screen, Dynamic Island, Mac app with menu bar controls | |
 
 ## The app

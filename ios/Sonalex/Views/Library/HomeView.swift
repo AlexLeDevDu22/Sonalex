@@ -84,6 +84,7 @@ struct HomeView: View {
                     if let moment = MomentFavorite.shared.current {
                         MomentFavoriteCard(track: moment, count: MomentFavorite.shared.weekCount)
                     }
+                    FriendsShelf()
                     if let daily = model.daily, daily.artist != nil {
                         DailyArtistsSection(picks: daily)
                     }
@@ -348,6 +349,9 @@ struct ProfileMenu: View {
     @State private var renaming = false
     @State private var deviceName = ""
     @State private var showDownloads = false
+    @State private var showService = false
+    @State private var community = Community.shared
+    @Environment(AppRouter.self) private var router
 
     var body: some View {
         Menu {
@@ -361,6 +365,22 @@ struct ProfileMenu: View {
                     }
                     Button { showDownloads = true } label: {
                         Label("Downloads…", systemImage: "arrow.down.circle")
+                    }
+                    if ServerFeatures.shared.accounts {
+                        Button { router.open(.friends) } label: {
+                            Label("Friends", systemImage: "person.2")
+                        }
+                        if community.isAdmin {
+                            Button { router.open(.accessRequests) } label: {
+                                Label(community.requests.isEmpty ? "Access Requests" : "Access Requests (\(community.requests.count))",
+                                      systemImage: "person.badge.clock")
+                            }
+                        }
+                        if ServerFeatures.shared.spotifySync {
+                            Button { showService = true } label: {
+                                Label("Music Service…", systemImage: "music.note.list")
+                            }
+                        }
                     }
                     Button(role: .destructive) {
                         Task {
@@ -386,14 +406,18 @@ struct ProfileMenu: View {
                 }
             }
         } label: {
-            Text(String(session.session?.userName.prefix(1).uppercased() ?? "?"))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(LinearGradient(colors: [Color(white: 0.6), Color(white: 0.4)], startPoint: .top, endPoint: .bottom),
-                            in: Circle())
+            Avatar(name: session.session?.userName ?? "?", size: 32)
+                .overlay(alignment: .topTrailing) {
+                    // Someone is waiting to join the server.
+                    if community.isAdmin, !community.requests.isEmpty {
+                        Circle().fill(.red).frame(width: 11, height: 11)
+                            .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                            .offset(x: 2, y: -2)
+                    }
+                }
         }
         .sheet(isPresented: $showDownloads) { DownloadsSettingsView() }
+        .sheet(isPresented: $showService) { MusicServiceView().appEnvironment() }
         .alert("Name of This Device", isPresented: $renaming) {
             TextField(ConnectManager.defaultDeviceName, text: $deviceName)
             Button("Cancel", role: .cancel) {}

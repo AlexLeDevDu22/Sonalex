@@ -63,36 +63,70 @@ def _phase(name, fn):
         return False
 
 
+def _everyone() -> int:
+    """Several users: each one's sync runs in a process of its own (SONALEX_USER), one after the
+    other, then the Mix analysis of every library at once."""
+    import json
+    import subprocess
+
+    from config import ACCOUNTS_PATH
+
+    accounts = json.loads(ACCOUNTS_PATH.read_text(encoding="utf8")).get("users", {})
+    failed = []
+    for account in accounts.values():
+        print(f"\n##### {account['name']} ({account.get('provider')}) #####", flush=True)
+        env = {**os.environ, "SONALEX_USER": account["slug"]}
+        code = subprocess.run([sys.executable, str(Path(__file__).resolve())], env=env).returncode
+        if code:
+            failed.append(account["name"])
+    import maintenance
+    ok = _phase("Analyse Mix (toutes les bibliothèques)", maintenance.analyze_for_mix)
+    print("\n##### Terminé " + ("✅" if not failed and ok else f"avec erreurs : {', '.join(failed) or 'Mix'} ❌") + " #####")
+    return 1 if failed or not ok else 0
+
+
 def main():
+    from config import ACCOUNTS_PATH, USER
+
+    if USER is None and ACCOUNTS_PATH.exists():
+        return _everyone()
     _setup_logging()
     from sync_lock import sync_lock
 
+    provider = (USER or {}).get("provider", "spotify")
     with sync_lock():  # attend la fin d'une synchro en direct en cours
         # Imports après le verrou : les modules lisent leur état à l'import.
         import jellyfin
-        import live_sync
         import maintenance
-        import playlists
-        from liked import full_check_likes
-        from sync import sync_playlists
 
-        playlists.reload_state()
-        jellyfin.refresh_library()
-        time.sleep(20)  # laisse Jellyfin indexer les nouveaux fichiers
-        jellyfin.build_path_index()
+        results = {}
+        if provider == "spotify":
+            import live_sync
+            import playlists
+            from liked import full_check_likes
+            from sync import sync_playlists
 
-        results = {
-            "Jellyfin → Spotify": _phase("Jellyfin → Spotify (rattrapage)", live_sync.reconcile),
-            "Likes": _phase("Likes ❤️", full_check_likes),
-            "Playlists": _phase("Playlists", sync_playlists),
-        }
-        playlists.reload_state()
-        results["Fichiers manquants"] = _phase("Fichiers manquants", maintenance.repair_missing_files)
-        results["Ménage"] = _phase("Songs plus utilisées", maintenance.cleanup_unused_songs)
-        results["tracks.json"] = _phase("tracks.json", maintenance.purge_dead_entries)
-        results["Doublons"] = _phase("Doublons de playlists", maintenance.dedupe_playlists)
-        results["Ordre"] = _phase("Ordre des playlists (comme Spotify)", playlists.reorder_all_like_spotify)
-        results["Mix"] = _phase("Analyse Mix (tempo, temps, tonalité)", maintenance.analyze_for_mix)
+            playlists.reload_state()
+            jellyfin.refresh_library()
+            time.sleep(20)  # laisse Jellyfin indexer les nouveaux fichiers
+            jellyfin.build_path_index()
+
+            results = {
+                "Jellyfin → Spotify": _phase("Jellyfin → Spotify (rattrapage)", live_sync.reconcile),
+                "Likes": _phase("Likes ❤️", full_check_likes),
+                "Playlists": _phase("Playlists", sync_playlists),
+            }
+            playlists.reload_state()
+            results["Fichiers manquants"] = _phase("Fichiers manquants", maintenance.repair_missing_files)
+            results["Ménage"] = _phase("Songs plus utilisées", maintenance.cleanup_unused_songs)
+            results["tracks.json"] = _phase("tracks.json", maintenance.purge_dead_entries)
+            results["Doublons"] = _phase("Doublons de playlists", maintenance.dedupe_playlists)
+            results["Ordre"] = _phase("Ordre des playlists (comme Spotify)", playlists.reorder_all_like_spotify)
+        elif provider == "deezer":
+            import deezer_sync
+            results["Deezer"] = _phase("Deezer (coups de cœur, playlists)", deezer_sync.sync)
+        if USER is None:  # a single user: the Mix analysis is theirs (else _everyone does it once)
+            results["Mix"] = _phase("Analyse Mix (tempo, temps, tonalité)", maintenance.analyze_for_mix)
         results["Paroles"] = _phase("Paroles manquantes", maintenance.fetch_missing_lyrics)
         results["Paroles synchronisées"] = _phase("Paroles synchronisées", maintenance.upgrade_plain_lyrics)
 

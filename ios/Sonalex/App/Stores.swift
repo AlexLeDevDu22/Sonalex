@@ -177,6 +177,8 @@ enum Route: Hashable {
     case onlineArtist(id: String, name: String)
     case onlineAlbum(id: String, name: String)
     case onlinePlaylist(id: String, name: String)
+    case friends, accessRequests
+    case friend(id: String, name: String)
 }
 
 @Observable
@@ -217,6 +219,7 @@ final class AppRouter {
             case .onlineArtist(_, let n): "onlineArtist:\(n)"
             case .onlineAlbum(_, let n): "onlineAlbum:\(n)"
             case .onlinePlaylist(_, let n): "onlinePlaylist:\(n)"
+            case .friend(_, let n): "friend:\(n)"
             default: "\(route)"
             }
         }.joined(separator: " > ")

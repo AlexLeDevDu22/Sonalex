@@ -41,6 +41,7 @@ class Song:
         disc_number: int | None = None,
         release_date: str | None = None,
         duration_ms: int | None = None,
+        isrc: str | None = None,
     ):
         self.spotify_id = spotify_id
         self.title = title
@@ -57,6 +58,8 @@ class Song:
         self.disc_number = disc_number
         self.release_date = release_date
         self.duration_ms = duration_ms
+        # Same recording whatever the service: how the server finds a song a friend already has.
+        self.isrc = isrc
         self.cover_path: str | None = None
         self.artist_cover_path: str | None = None
 
@@ -105,6 +108,30 @@ class Song:
             **cls.album_fields(spotify_data),
         )
 
+    @classmethod
+    def parse_deezer(cls, track: dict) -> "Song":
+        """From a Deezer track (/track/<id>: with its ISRC and contributors). Key: "dz:<id>"."""
+        album = track.get("album") or {}
+        artist = track.get("artist") or {}
+        contributors = [c.get("name") for c in track.get("contributors") or [] if c.get("name")]
+        main = artist.get("name") or (contributors[0] if contributors else None)
+        return cls(
+            spotify_id=f"dz:{track['id']}",
+            title=track.get("title_short") or track.get("title"),
+            artist=main,
+            featured_artists=[c for c in contributors if c != main],
+            album_name=album.get("title"),
+            cover_url=album.get("cover_xl") or album.get("cover_big"),
+            artist_cover_url=artist.get("picture_xl") or artist.get("picture_big"),
+            local_path=None,
+            album_artist=main,
+            track_number=track.get("track_position"),
+            disc_number=track.get("disk_number"),
+            release_date=track.get("release_date") or album.get("release_date"),
+            duration_ms=int(track.get("duration") or 0) * 1000 or None,
+            isrc=track.get("isrc"),
+        )
+
     @staticmethod
     def album_fields(spotify_data: dict) -> dict:
         """Album artist, track/disc number, release date and duration from a Spotify track."""
@@ -117,6 +144,7 @@ class Song:
             "disc_number": spotify_data.get("disc_number"),
             "release_date": album.get("release_date"),
             "duration_ms": spotify_data.get("duration_ms"),
+            "isrc": (spotify_data.get("external_ids") or {}).get("isrc"),
         }
 
     @classmethod
@@ -137,6 +165,7 @@ class Song:
             disc_number=json_data.get("disc_number"),
             release_date=json_data.get("release_date"),
             duration_ms=json_data.get("duration_ms"),
+            isrc=json_data.get("isrc"),
         )
 
     # ------------------------------------------------------------------
@@ -154,7 +183,8 @@ class Song:
             "artist_cover_url": self.artist_cover_url,
             "path": self.local_path,
         }
-        for key in ("album_artist", "track_number", "track_total", "disc_number", "release_date", "duration_ms"):
+        for key in ("album_artist", "track_number", "track_total", "disc_number", "release_date", "duration_ms",
+                    "isrc"):
             if getattr(self, key) is not None:
                 data[key] = getattr(self, key)
         return data

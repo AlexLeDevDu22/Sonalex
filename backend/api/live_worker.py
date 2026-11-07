@@ -12,6 +12,10 @@ the nightly sync: each job takes the shared sync lock):
 
 The nightly full_refreshing.py still runs at midnight for the Spotify → Jellyfin direction
 (downloads) and as a last check.
+
+Several users: a job is for one user (their slug: their Spotify account, their Jellyfin user) and
+runs in a process of its own (user_jobs.py). Only users synced with Spotify have live pushes
+(Deezer can't be written to).
 """
 
 import asyncio
@@ -19,6 +23,7 @@ import json
 import threading
 import time
 from collections import OrderedDict
+from pathlib import Path
 
 from .common import JELLYFIN_URL
 
@@ -57,37 +62,40 @@ class LiveWorker:
                 self._cv.wait(timeout=wait)
 
     def _run(self):
-        import live_sync
-        from sync_lock import sync_lock
+        from user_jobs import run
 
         while True:
             job = self._next_job()
-            kind = job[0]
+            kind, slug = job[0], job[1]
             try:
-                # Waits while the nightly sync runs; it will be done right after.
-                with sync_lock():
-                    if kind == "playlist":
-                        live_sync.push_playlist(job[1])
-                    elif kind == "favorites":
-                        # Merge every favorite change queued meanwhile into this push.
-                        ids = set(job[1])
-                        with self._cv:
-                            for other in [j for j in self._jobs if j[0] == "favorites"]:
-                                ids |= set(other[1])
-                                del self._jobs[other]
-                        live_sync.push_favorite_items(sorted(ids))
-                    elif kind == "reconcile":
-                        live_sync.reconcile()
-                        self.last_reconcile = time.time()
+                # The job waits (sync lock) while the nightly sync runs; it will be done right after.
+                if kind == "playlist":
+                    result = run(slug, "push-playlist", job[2])
+                elif kind == "favorites":
+                    # Merge every favorite change of this user queued meanwhile into this push.
+                    ids = set(job[2])
+                    with self._cv:
+                        for other in [j for j in self._jobs if j[0] == "favorites" and j[1] == slug]:
+                            ids |= set(other[2])
+                            del self._jobs[other]
+                    result = run(slug, "push-favorites", *sorted(ids))
+                elif kind == "reconcile":
+                    result = run(slug, "reconcile")
+                    self.last_reconcile = time.time()
+                else:
+                    continue
+                if result.get("error"):
+                    raise RuntimeError(result["error"])
                 self.last_error = None
             except Exception as e:
-                self.last_error = f"{kind}: {e!r}"
-                live_sync.log(f"⚠️ {kind} échoué ({e!r}) → nouvel essai au prochain passage")
+                self.last_error = f"{kind} ({slug}): {e!r}"
+                print(f"[live-sync] ⚠️ {kind} ({slug}) échoué ({e!r}) → nouvel essai au prochain passage", flush=True)
 
     def _poll(self):
         time.sleep(30)  # let the API start
         while True:
-            self.submit("reconcile", delay=0)
+            for slug in spotify_users():
+                self.submit("reconcile", slug, delay=0)
             time.sleep(RECONCILE_EVERY)
 
     # -- Jellyfin websocket ------------------------------------------------------
@@ -118,13 +126,14 @@ class LiveWorker:
                                 keep_alive = asyncio.create_task(_keep_alive(ws, float(msg.get("Data") or 60) / 2))
                         elif kind == "UserDataChanged":
                             data = msg.get("Data") or {}
-                            if data.get("UserId", "").replace("-", "") != (jellyfin.USER_ID or "").replace("-", ""):
-                                continue
+                            slug = spotify_user_slug(data.get("UserId", ""))
+                            if slug is False:
+                                continue  # not someone synced with Spotify
                             ids = tuple(sorted({u["ItemId"] for u in data.get("UserDataList", [])
                                                 if "IsFavorite" in u and u.get("ItemId")}))
                             if ids:
                                 self.favorite_events += 1
-                                self.submit("favorites", ids, delay=1.0)
+                                self.submit("favorites", slug, ids, delay=1.0)
             except Exception as e:
                 self.websocket_connected = False
                 print(f"[live-sync] websocket Jellyfin coupé ({e!r}), reconnexion…", flush=True)
@@ -147,6 +156,32 @@ async def _keep_alive(ws, every: float):
             await asyncio.sleep(max(5.0, every))
     except Exception:
         pass  # the socket closed: _listen_forever reconnects
+
+
+def spotify_users() -> list:
+    """Slugs of the users synced with Spotify ([None] = the single user of a server without accounts)."""
+    import accounts
+
+    found = accounts.users()
+    if not found:
+        return [None]
+    return [a["slug"] for a in found.values() if a.get("provider") == "spotify" and Path(a["spotifyToken"]).exists()]
+
+
+def spotify_user_slug(jellyfin_user_id: str):
+    """Slug of the Spotify-synced user behind a Jellyfin user id; None: single user; False: none."""
+    import accounts
+
+    import jellyfin
+
+    found = accounts.users()
+    if not found:
+        same = jellyfin_user_id.replace("-", "") == (jellyfin.USER_ID or "").replace("-", "")
+        return None if same else False
+    account = accounts.user(jellyfin_user_id)
+    if account and account.get("provider") == "spotify" and Path(account["spotifyToken"]).exists():
+        return account["slug"]
+    return False
 
 
 def _token_from_headers(headers: dict) -> str:

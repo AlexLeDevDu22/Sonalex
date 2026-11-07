@@ -21,6 +21,12 @@ Everything is removed when you delete the app. Signing out clears the session an
   Mix, the playback state shared between your devices (Connect), and technical playback events that
   help fix bugs. This data stays on that server.
 
+On a server with several users, the other users of **that server** see your profile: what you
+listen to (and when), your top songs and artists, your song of the moment, your favorites count, and
+which of their songs you have or like. You can hide yourself in the app (Profile → Music Service →
+Show Me to Friends). If you connect a Spotify or Deezer account, its token or public profile is kept
+on that server to sync your library.
+
 These servers belong to whoever hosts them (you, or someone who gave you an account), not to the
 developer of Sonalex: they are responsible for them.
 

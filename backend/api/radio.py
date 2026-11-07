@@ -66,11 +66,10 @@ def _deezer_radio(artist: str) -> tuple[list[dict], list[str]]:
     return tracks, related
 
 
-def _local_track(sid: str) -> dict:
-    t = LIBRARY.by_sid.get(sid, {})
+def _local_track(sid: str, t: dict) -> dict:
     names = [t.get("artist")] + list(t.get("featured_artists") or [])
     return {
-        "key": f"sp:{sid}", "title": t.get("title") or "",
+        "key": sid if sid.startswith("dz:") else f"sp:{sid}", "title": t.get("title") or "",
         "artists": [{"id": f"name:{n}", "name": n} for n in names if n],
         "album": {"id": None, "name": t.get("album_name") or "", "image": t.get("cover_url")},
         "durationMs": 0, "explicit": False, "trackNumber": None, "discNumber": None, "year": None,
@@ -103,8 +102,8 @@ def radio(seed: dict, recent: list[dict], limit: int, user_headers: dict, user_i
 
     lastfm_tracks = [t for t in _pool.map(resolve, lastfm[:25]) if t]
 
-    local_sids = LIBRARY.local_tracks_for_artists([artist] + related[:10], max(limit // 3, 4), seen)
-    local_tracks = [_local_track(sid) for sid in local_sids]
+    local = LIBRARY.local_tracks_for_artists([artist] + related[:10], max(limit // 3, 4), seen, user_id)
+    local_tracks = [_local_track(sid, t) for sid, t in local]
 
     random.shuffle(dz_tracks)
     sources = [lastfm_tracks, dz_tracks, local_tracks]

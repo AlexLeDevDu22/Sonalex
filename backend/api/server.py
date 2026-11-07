@@ -23,7 +23,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocke
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from . import automix, catalog, daily, radio as radio_mod, saver
+from . import automix, catalog, community, daily, radio as radio_mod, saver
+from .auth import Auth, _user_for_token, auth, online, spotify_sync
 from .connect import HUB
 from .common import BACKEND_DIR, JELLYFIN_URL, LOG_DIR, TTLCache, parse_range
 from .library import LIBRARY
@@ -34,8 +35,8 @@ from config import ONLINE, SPOTIFY_SYNC  # noqa: E402
 
 VERSION = "1.0"
 app = FastAPI(title="Sonalex server", version=VERSION)
+app.include_router(community.router)
 
-_tokens = TTLCache(ttl=600)
 _lyrics = TTLCache(ttl=24 * 3600)
 PLAYER_LOG = LOG_DIR / "player-debug.log"
 API_LOG = LOG_DIR / "server.log"
@@ -58,74 +59,6 @@ def _trim_log(path: Path):
         print(f"[api] log {path.name}: {e!r}")
 
 
-# ---------------------------------------------------------------------------
-# Auth: the app's Jellyfin session is the key
-# ---------------------------------------------------------------------------
-
-# Jellyfin 12 no longer accepts the legacy X-Emby-Token header: always talk to it with
-# "Authorization: MediaBrowser … Token=…" (still accepted from the apps on the way in).
-class Auth:
-    def __init__(self, token: str, user_id: str):
-        self.token = token
-        self.user_id = user_id
-
-    @property
-    def headers(self) -> dict:
-        return {"Authorization": f'MediaBrowser Client="Musique API", Device="Pi", DeviceId="musique-api", '
-                                 f'Version="1.0", Token="{self.token}"'}
-
-
-def _token_from(request: Request) -> str | None:
-    header = request.headers.get("authorization", "")
-    m = re.search(r'Token="([^"]+)"', header)
-    if m:
-        return m.group(1)
-    if header.lower().startswith("bearer "):
-        return header[7:].strip()
-    return (request.headers.get("x-emby-token") or request.query_params.get("ApiKey")
-            or request.query_params.get("api_key"))
-
-
-def _user_for_token(token: str) -> str | None:
-    """The Jellyfin user of a token; None if it isn't valid. Raises RequestException if Jellyfin
-    can't be reached."""
-    user_id = _tokens.get(token)
-    if user_id:
-        return user_id
-    r = requests.get(f"{JELLYFIN_URL}/Users/Me", headers=Auth(token, "").headers, timeout=8)
-    if r.status_code != 200:
-        return None
-    user_id = r.json()["Id"]
-    _tokens.set(token, user_id)
-    return user_id
-
-
-def auth(request: Request) -> Auth:
-    token = _token_from(request)
-    if not token:
-        raise HTTPException(401, "Not signed in")
-    try:
-        user_id = _user_for_token(token)
-    except requests.RequestException:
-        raise HTTPException(503, "Jellyfin unreachable")
-    if not user_id:
-        raise HTTPException(401, "Invalid Jellyfin session")
-    return Auth(token, user_id)
-
-
-def online(a: Auth = Depends(auth)) -> Auth:
-    """Routes of the online catalog: only when the server owner turned it on."""
-    if not ONLINE:
-        raise HTTPException(404, "The online catalog is off on this server")
-    return a
-
-
-def spotify_sync(a: Auth = Depends(auth)) -> Auth:
-    if not SPOTIFY_SYNC:
-        raise HTTPException(404, "The Spotify sync is off on this server")
-    return a
-
-
 def _attach(tracks: list[dict], a: Auth) -> list[dict]:
     return LIBRARY.attach_local(tracks, a.headers, a.user_id)
 
@@ -137,8 +70,12 @@ def _attach(tracks: list[dict], a: Auth) -> list[dict]:
 @app.get("/api/health")
 def health():
     # The app shows only what this server offers.
+    import accounts
+    from config import SIGNUPS
+
     return {"ok": True, "name": "Sonalex server", "version": VERSION,
-            "features": {"mix": True, "connect": True, "online": ONLINE, "spotifySync": SPOTIFY_SYNC}}
+            "features": {"mix": True, "connect": True, "online": ONLINE, "spotifySync": SPOTIFY_SYNC,
+                         "accounts": accounts.multi_user_ready(), "signups": SIGNUPS and accounts.multi_user_ready()}}
 
 
 @app.get("/api/search")
@@ -215,11 +152,24 @@ def status(key: str, a: Auth = Depends(online)):
 
 @app.get("/api/stream/{key}")
 async def stream(key: str, request: Request, a: Auth = Depends(online)):
+    local = _on_server(key)
+    if local:  # a friend has it: straight from the file, at once
+        return await _file_response(local, request.headers.get("range"), False, "audio/mpeg")
     return await STREAMER.serve(key, request.headers.get("range"))
+
+
+def _on_server(key: str) -> Path | None:
+    import library_index
+
+    path = library_index.find_key(key)
+    return Path(path) if path else None
 
 
 @app.head("/api/stream/{key}")
 async def stream_head(key: str, request: Request, a: Auth = Depends(online)):
+    local = _on_server(key)
+    if local:
+        return await _file_response(local, request.headers.get("range"), True, "audio/mpeg")
     return await STREAMER.serve(key, request.headers.get("range"), head=True)
 
 
@@ -233,7 +183,7 @@ async def save(key: str, body: SaveBody, a: Auth = Depends(online)):
     try:
         item = await run_in_threadpool(saver.save, key, body.favorite, body.playlistId, a.headers, a.user_id)
         if body.playlistId:
-            LIVE.submit("playlist", body.playlistId)
+            _push_playlist(a, body.playlistId)
     except LookupError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
@@ -308,8 +258,15 @@ async def connect(ws: WebSocket):
 
 @app.post("/api/sync/playlist/{playlist_id}", status_code=202)
 def sync_playlist(playlist_id: str, a: Auth = Depends(spotify_sync)):
-    LIVE.submit("playlist", playlist_id)
+    _push_playlist(a, playlist_id)
     return {"queued": True}
+
+
+def _push_playlist(a: Auth, playlist_id: str):
+    """A playlist edited in the app goes to Spotify (users synced with Spotify only)."""
+    account = a.account
+    if account is None or account.get("provider") == "spotify":
+        LIVE.submit("playlist", a.slug, playlist_id)
 
 
 @app.get("/api/mix/segment")
@@ -407,7 +364,8 @@ async def debug_player(request: Request, a: Auth = Depends(auth)):
 
 @app.post("/api/sync", status_code=202)
 def sync_all(a: Auth = Depends(spotify_sync)):
-    LIVE.submit("reconcile", delay=0)
+    if a.account is None or a.account.get("provider") == "spotify":
+        LIVE.submit("reconcile", a.slug, delay=0)
     return {"queued": True}
 
 
@@ -423,6 +381,11 @@ def warm_up():
         _trim_log(log)
     print(f"[api] Sonalex server {VERSION} – online catalog: {'on' if ONLINE else 'off'}, "
           f"Spotify sync: {'on' if SPOTIFY_SYNC else 'off'}", flush=True)
+    import accounts
+    from . import social
+
+    social.init()
+    accounts.bootstrap()
     if SPOTIFY_SYNC:
         LIVE.start()
     if ONLINE:

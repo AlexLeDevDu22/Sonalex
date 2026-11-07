@@ -152,9 +152,11 @@ final class ServerFeatures {
     private(set) var online = false
     /// Playlists and favorites follow a Spotify account.
     private(set) var spotifySync = false
+    /// Several users on this server: friends, profiles, access requests.
+    private(set) var accounts = false
 
     private struct Health: Decodable {
-        struct Features: Decodable { var online: Bool?; var spotifySync: Bool? }
+        struct Features: Decodable { var online: Bool?; var spotifySync: Bool?; var accounts: Bool? }
         var ok: Bool
         var features: Features?
     }
@@ -166,6 +168,7 @@ final class ServerFeatures {
         companion = saved["companion"] ?? false
         online = saved["online"] ?? false
         spotifySync = saved["spotifySync"] ?? false
+        accounts = saved["accounts"] ?? false
     }
 
     /// Asks the server (at login, at launch). A network failure keeps what was known.
@@ -179,13 +182,17 @@ final class ServerFeatures {
         // A server from before the modules existed had them all.
         online = companion && (health?.features.map { $0.online ?? false } ?? true)
         spotifySync = companion && (health?.features.map { $0.spotifySync ?? false } ?? true)
-        UserDefaults.standard.set(["companion": companion, "online": online, "spotifySync": spotifySync], forKey: Self.key)
+        accounts = companion && (health?.features?.accounts ?? false)
+        UserDefaults.standard.set(["companion": companion, "online": online, "spotifySync": spotifySync,
+                                   "accounts": accounts], forKey: Self.key)
+        if accounts { await Community.shared.refreshMe() }
     }
 
     func reset() {
         companion = false
         online = false
         spotifySync = false
+        accounts = false
         UserDefaults.standard.removeObject(forKey: Self.key)
     }
 }
@@ -234,6 +241,15 @@ final class SonalexAPI {
             throw Failure.server(detail ?? "Sonalex server error (\(code)).")
         }
         return data
+    }
+
+    /// For the screens of several users (SocialAPI.swift).
+    func send(_ path: String, method: String, body: [String: Any]? = nil, timeout: TimeInterval = 20) async throws -> Data {
+        try await request(path, method: method, body: body, timeout: timeout)
+    }
+
+    func fetch<T: Decodable>(_ path: String, _ query: [String: String] = [:], timeout: TimeInterval = 20) async throws -> T {
+        try await get(path, query, timeout: timeout)
     }
 
     private func get<T: Decodable>(_ path: String, _ query: [String: String] = [:], timeout: TimeInterval = 20) async throws -> T {

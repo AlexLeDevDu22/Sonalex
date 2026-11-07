@@ -1,88 +1,38 @@
 """
-saver.py – Keeps an online song for good.
+saver.py – Keeps an online song for good, in the library of the user who asked.
 
-When a streamed song is liked or added to a playlist from the app, its temporary download is
-converted to MP3 and filed into the Jellyfin library exactly like the songs downloaded by the
-nightly sync (same Song model, tags, covers, tracks.json entry), so the Spotify ↔ Jellyfin sync
-keeps working on it. Then the favorite / playlist action is applied in Jellyfin.
+When a streamed song is liked or added to a playlist from the app, it is filed into the user's
+library exactly like the songs the sync downloads (same Song model, tags, covers, tracks.json
+entry), so the Spotify / Deezer sync keeps working on it. If someone on the server already has it,
+it's a hard link to their file: instant, and no room taken. Then the favorite / playlist action is
+applied in Jellyfin, as the user.
+
+The filing itself runs for the user in a process of their own (user_jobs.py save).
 """
 
-import copy
-import os
-import shutil
-import subprocess
 import threading
-from pathlib import Path
 
-from . import catalog
-from .common import TEMP_DIR
 from .library import LIBRARY, jf_request
 from .streamer import STREAMER
 
 _save_lock = threading.Lock()
 
 
-def _reload_local_songs():
-    """The nightly sync runs in another process: re-read tracks.json before writing it."""
-    import local_song
-
-    local_song.reload(force=True)
-
-
-def _spotify_id_for(key: str) -> str:
-    if key.startswith("sp:"):
-        return key[3:]
-    meta = catalog.track_meta(key)
-    artist = meta["artists"][0]["name"] if meta.get("artists") else ""
-    match = catalog.find_spotify_track(meta["title"], artist)
-    if not match:
-        raise LookupError("Song not found on Spotify: it can’t be added to the library.")
-    return match["key"][3:]
-
-
-def _file_into_library(key: str, sid: str) -> str:
-    """Returns the MP3 path in the library, creating it from the streamed file if needed."""
-    import local_song
-    from spotify import download_online_cover_image
-    from song import Song
-    from utils.tag_mp3_metadata import add_metadata_to_mp3
-
-    with _save_lock:
-        _reload_local_songs()
-        existing = local_song.song_already_downloaded(sid)
-        if existing:
-            return existing
-
-        job = STREAMER.wait_done(key)
-        song = Song.parse_spotify(catalog.sp_track(sid))
-        song.generate_local_path()
-        os.makedirs(os.path.dirname(song.local_path), exist_ok=True)
-
-        # Build the tagged MP3 (+ .lrc) outside the library, then move it in at once:
-        # Jellyfin must never see a half-written file (it would index it without metadata).
-        staging = copy.copy(song)
-        staging.local_path = str(TEMP_DIR / f"save_{sid}.mp3")
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(job.path), "-vn",
-                        "-codec:a", "libmp3lame", "-b:a", "256k", staging.local_path], check=True, timeout=600)
-        add_metadata_to_mp3(staging)
-        for ext in (".lrc", ".txt"):  # synced or plain lyrics
-            staged = Path(staging.local_path).with_suffix(ext)
-            if staged.exists():
-                shutil.move(str(staged), str(Path(song.local_path).with_suffix(ext)))
-        shutil.move(staging.local_path, song.local_path)
-
-        if song.cover_url and not os.path.exists(song.cover_path):
-            download_online_cover_image(song.cover_url, song.cover_path)
-        if song.artist_cover_url and not os.path.exists(song.artist_cover_path):
-            download_online_cover_image(song.artist_cover_url, song.artist_cover_path)
-        local_song.add_song(song)
-        print(f"[saver] ✅ {song.artist} - {song.title} → {song.local_path}")
-        return song.local_path
-
-
 def save(key: str, favorite: bool, playlist_id: str | None, user_headers: dict, user_id: str) -> dict:
-    sid = _spotify_id_for(key)
-    path = _file_into_library(key, sid)
+    import accounts
+    import library_index
+    from user_jobs import run
+
+    account = accounts.user(user_id)
+    # Not on the server yet: the streamed file (downloaded while it played) is what gets kept.
+    source = "-" if library_index.find_key(key) else str(STREAMER.wait_done(key).path)
+    with _save_lock:  # one at a time: Jellyfin indexes them one after the other anyway
+        result = run(account["slug"] if account else None, "save", key, source, timeout=900)
+    if result.get("error"):
+        if "not found" in result["error"]:
+            raise LookupError(result["error"])
+        raise RuntimeError(result["error"])
+    path = result["path"]
 
     # Rescan only the album (or artist) folder: seconds instead of a whole-library scan.
     LIBRARY.scan_folder_of(path)

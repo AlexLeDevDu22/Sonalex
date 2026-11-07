@@ -301,15 +301,18 @@ def info_for_path(path: str) -> dict | None:
     process overwrites what the other just computed)."""
     global _cache
     try:
-        mtime = os.stat(path).st_mtime_ns
+        st = os.stat(path)
     except OSError:
         return None
-    key = f"{path}|{mtime}"
+    # By file, not by path: the same song linked into several users' libraries is one file.
+    key = f"inode:{st.st_dev}:{st.st_ino}|{st.st_mtime_ns}"
+    legacy = f"{path}|{st.st_mtime_ns}"  # analyses made before, by path
     with _lock:
-        hit = _load_cache().get(key)
+        cache = _load_cache()
+        hit = cache.get(key) or cache.get(legacy)
         if not (hit and hit.get("v") == VERSION):
             _cache = _read_disk()
-            hit = _cache.get(key)
+            hit = _cache.get(key) or _cache.get(legacy)
         if hit and hit.get("v") == VERSION:
             return None if hit.get("unusable") else hit
     result = analyze(path)
@@ -426,12 +429,11 @@ def path_for_key(key: str, wait: bool = False) -> str | None:
     Jellyfin item id.
     `wait`: for an online song, wait for (or start) its download."""
     if key.startswith(("sp:", "dz:")):
-        if key.startswith("sp:"):
-            import local_song
+        import library_index
 
-            local = local_song.song_already_downloaded(key[3:])
-            if local:
-                return local
+        local = library_index.find_key(key)  # someone on the server has it
+        if local:
+            return local
         from .streamer import STREAMER
 
         job = STREAMER.jobs.get(key)
@@ -446,7 +448,11 @@ def path_for_key(key: str, wait: bool = False) -> str | None:
         return None
     import jellyfin
 
-    r = jellyfin._get(f"{jellyfin.SERVER}/Items", raise_for_status=False,
-                      params={"Ids": key, "Fields": "Path", "UserId": jellyfin.USER_ID})
+    from config import JELLYFIN_API_KEY
+
+    params = {"Ids": key, "Fields": "Path"}
+    if not JELLYFIN_API_KEY:  # a user session only sees with its user; an API key sees every library
+        params["UserId"] = jellyfin.USER_ID
+    r = jellyfin._get(f"{jellyfin.SERVER}/Items", raise_for_status=False, params=params)
     items = r.json().get("Items", []) if r.ok else []
     return items[0].get("Path") if items else None

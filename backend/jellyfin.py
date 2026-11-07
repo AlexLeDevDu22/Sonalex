@@ -15,7 +15,7 @@ from pathlib import Path
 
 load_dotenv()
 
-from config import JELLYFIN_URL
+from config import JELLYFIN_API_KEY, JELLYFIN_URL
 
 SERVER = JELLYFIN_URL
 USER = os.getenv("JELLYFIN_USER")
@@ -47,8 +47,14 @@ def authenticate():
 _AUTH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jellyfin_auth.json")
 TIMEOUT = 30
 
+_CLIENT = 'MediaBrowser Client="Sonalex server", Device="Server", DeviceId="sonalex-server", Version="1.0"'
+
 HEADERS = None
-if os.path.exists(_AUTH_PATH):
+if JELLYFIN_API_KEY:
+    # An API key sees every user's library (a user session only sees its own): needed with
+    # several users, and it never expires.
+    HEADERS = {"Authorization": f'{_CLIENT}, Token="{JELLYFIN_API_KEY}"'}
+elif os.path.exists(_AUTH_PATH):
     with open(_AUTH_PATH, "r", encoding="utf8") as f:
         HEADERS = json.load(f)
 if not HEADERS:
@@ -60,15 +66,21 @@ if not HEADERS:
 def _ensure_auth():
     """Re-authenticate if the session token expired (401)."""
     global HEADERS
+    if JELLYFIN_API_KEY:
+        raise RuntimeError("Jellyfin refused JELLYFIN_API_KEY (deleted in Dashboard → API Keys?)")
     HEADERS = authenticate()
     with open(_AUTH_PATH, "w", encoding="utf8") as f:
         json.dump(HEADERS, f, indent=4, ensure_ascii=False)
 
 
 if not USER_ID:
-    # Not in .env: the account the server signed in with.
+    # Not in .env: the account the server signed in with (with an API key: the one named JELLYFIN_USER).
     try:
-        USER_ID = requests.get(f"{SERVER}/Users/Me", headers=HEADERS, timeout=TIMEOUT).json()["Id"]
+        if JELLYFIN_API_KEY:
+            USER_ID = next(u["Id"] for u in requests.get(f"{SERVER}/Users", headers=HEADERS, timeout=TIMEOUT).json()
+                           if u["Name"].lower() == (USER or "").lower())
+        else:
+            USER_ID = requests.get(f"{SERVER}/Users/Me", headers=HEADERS, timeout=TIMEOUT).json()["Id"]
     except Exception as e:
         print(f"[jellyfin] JELLYFIN_USER_ID not found: {e!r}")
 
@@ -110,7 +122,12 @@ def _delete(url, raise_for_status=True, **kwargs):
 # Bibliothèque
 # ---------------------------------------------------------------------------
 
+LIBRARY_ID = os.getenv("SONALEX_LIBRARY_ID") or None  # this user's own library (several users)
+
+
 def get_music_library_id():
+    if LIBRARY_ID:
+        return LIBRARY_ID
     r = _get(f"{SERVER}/Library/VirtualFolders")
     for lib in r.json():
         if lib.get("CollectionType") == "music":
@@ -121,7 +138,12 @@ def get_music_library_id():
 def refresh_library(library_id=None):
     if library_id is None:
         library_id = get_music_library_id()
-    _post(f"{SERVER}/Items/{library_id}/Refresh")
+    # The parameters of Jellyfin's own "Scan library" button: without them new files aren't found.
+    _post(f"{SERVER}/Items/{library_id}/Refresh", params=SCAN_PARAMS)
+
+
+SCAN_PARAMS = {"Recursive": "true", "ImageRefreshMode": "Default", "MetadataRefreshMode": "Default",
+               "ReplaceAllImages": "false", "ReplaceAllMetadata": "false"}
 
 
 # ---------------------------------------------------------------------------
@@ -134,15 +156,10 @@ _ITEMS_BY_SPOTIFY_ID: dict | None = None  # spotify_track_id → jellyfin_item_i
 
 def build_path_index():
     global _ITEMS_BY_PATH
-    r = _get(
-        f"{SERVER}/Items",
-        params={
-            "Recursive": "true",
-            "IncludeItemTypes": "Audio",
-            "Fields": "Path,ProviderIds",
-            "Limit": 100000,
-        },
-    )
+    params = {"Recursive": "true", "IncludeItemTypes": "Audio", "Fields": "Path,ProviderIds", "Limit": 100000}
+    if LIBRARY_ID:
+        params["ParentId"] = LIBRARY_ID  # only this user's songs (the same file is in other libraries)
+    r = _get(f"{SERVER}/Items", params=params)
     _ITEMS_BY_PATH = {}
     for item in r.json()["Items"]:
         path = item.get("Path")
@@ -186,8 +203,10 @@ def get_all_jellyfin_playlists() -> list[dict]:
         params={
             "Recursive": True,
             "IncludeItemTypes": "Playlist",
+            "UserId": USER_ID,
         },
     )
+    # UserId: only this user's own playlists (with several users, never push a friend's to this Spotify).
     return r.json().get("Items", [])
 
 def get_jellyfin_playlist_items(jellyfin_playlist_id: str) -> list[dict]:

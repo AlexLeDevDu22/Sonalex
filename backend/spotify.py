@@ -17,7 +17,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_CHOSIC_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chosic_data.json")
+# The user's Spotify token (config.py sets SONALEX_SPOTIFY_TOKEN for each user): either a session of
+# chosic.com (what the first install used), or {"kind": "oauth", …} from signing in to Spotify in
+# the app with the server's own Spotify app (spotify_auth.py).
+_CHOSIC_PATH = (os.getenv("SONALEX_SPOTIFY_TOKEN")
+                or os.path.join(os.path.dirname(os.path.abspath(__file__)), "chosic_data.json"))
 try:
     with open(_CHOSIC_PATH, "r") as f:
         chosic_data = json.load(f)
@@ -51,6 +55,8 @@ def refresh_spotify_token(force: bool = False):
         if not force and chosic_data.get("last_refreshed") and chosic_data["last_refreshed"] + 3300 > time():
             return chosic_data["access_token"]
 
+        if chosic_data.get("kind") == "oauth":
+            return _refresh_oauth()
         if not chosic_data.get("playlist_analyzer_refresh_token"):
             raise RuntimeError("No Spotify account token: backend/chosic_data.json is missing "
                                "(see backend/README.md, Spotify sync)")
@@ -88,6 +94,34 @@ def refresh_spotify_token(force: bool = False):
                 last_error = repr(e)
             sleep(2 * (attempt + 1))
         raise Exception("Failed to refresh Spotify token", last_error)
+
+
+def _refresh_oauth() -> str:
+    """Refresh of a token from the app's Spotify sign-in (PKCE: the client id is enough)."""
+    last_error = None
+    for attempt in range(5):
+        try:
+            r = requests.post("https://accounts.spotify.com/api/token", timeout=20, data={
+                "grant_type": "refresh_token", "refresh_token": chosic_data["refresh_token"],
+                "client_id": chosic_data["client_id"]})
+            if r.status_code == 200:
+                data = r.json()
+                chosic_data["access_token"] = data["access_token"]
+                chosic_data["refresh_token"] = data.get("refresh_token") or chosic_data["refresh_token"]
+                chosic_data["last_refreshed"] = time()
+                tmp = _CHOSIC_PATH + ".tmp"
+                with open(tmp, "w") as f:
+                    json.dump(chosic_data, f, indent=4)
+                os.chmod(tmp, 0o600)
+                os.replace(tmp, _CHOSIC_PATH)
+                return chosic_data["access_token"]
+            if r.status_code in (400, 401):
+                raise RuntimeError(f"Spotify refused the sign-in (connect Spotify again in the app): {r.text[:200]}")
+            last_error = f"{r.status_code} {r.text[:200]}"
+        except requests.RequestException as e:
+            last_error = repr(e)
+        sleep(2 * (attempt + 1))
+    raise Exception("Failed to refresh Spotify token", last_error)
 
 
 def _auth_headers():

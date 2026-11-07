@@ -173,4 +173,27 @@ class Hub:
             await room.broadcast(room.listing())
 
 
+    def now_playing(self, user_id: str) -> dict | None:
+        """What a user is listening to right now (on whichever of their devices), or None."""
+        room = self.rooms.get(user_id)
+        st = room.current_state() if room and room.active else None
+        if not st or not st.get("isPlaying"):
+            return None
+        queue, index = st.get("queue") or [], int(st.get("index") or 0)
+        track = (queue[index] or {}).get("track") if 0 <= index < len(queue) else None
+        if not track:
+            return None
+        artists = ", ".join(a.get("name") or "" for a in track.get("artistItems") or []) or track.get("albumArtist")
+        return {"itemId": track.get("id"), "title": track.get("name"), "artist": artists, "album": track.get("album"),
+                "artId": track.get("albumId"), "artTag": track.get("albumPrimaryImageTag"),
+                "art": track.get("externalArt")}
+
+    async def notify(self, user_ids, msg: dict):
+        """A message to every device of these users (account requests for the admins…)."""
+        for uid in user_ids:
+            room = self.rooms.get(uid)
+            if room:
+                await room.broadcast(msg)
+
+
 HUB = Hub()

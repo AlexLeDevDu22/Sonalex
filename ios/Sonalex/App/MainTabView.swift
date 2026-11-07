@@ -80,6 +80,9 @@ struct RouteView: View {
         case .onlineArtist(let id, let name): OnlineArtistView(artistId: id, name: name)
         case .onlineAlbum(let id, let name): OnlineAlbumView(albumId: id, name: name)
         case .onlinePlaylist(let id, let name): OnlinePlaylistView(playlistId: id, name: name)
+        case .friends: FriendsView()
+        case .accessRequests: AccessRequestsView()
+        case .friend(let id, let name): FriendProfileView(userId: id, name: name)
         }
     }
 }

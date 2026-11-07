@@ -85,19 +85,27 @@ def fetch_missing_lyrics():
 
 
 def analyze_for_mix(budget_s: float = 1800):
-    """Mix: analyses the library ahead (tempo, beats, key), so transitions are ready at once."""
+    """Mix: analyses the libraries ahead (tempo, beats, key), so transitions are ready at once.
+    Every user's songs; a file several users have is analysed once (cached by file, not path)."""
     import time
     from pathlib import Path
 
+    import library_index
     from api.mixinfo import info_for_path
 
-    started, done = time.time(), 0
-    for s in local_song.all_songs():
+    started, done, seen = time.time(), 0, set()
+    for _, entry in library_index._entries():
+        path = entry.get("path")
         if time.time() - started > budget_s:
             break
-        if s.local_path and Path(s.local_path).exists():
-            info_for_path(s.local_path)  # cached: only new songs cost anything
-            done += 1
+        if not path or not Path(path).exists():
+            continue
+        st = os.stat(path)
+        if (st.st_dev, st.st_ino) in seen:
+            continue
+        seen.add((st.st_dev, st.st_ino))
+        info_for_path(path)  # cached: only new songs cost anything
+        done += 1
     print(f"[Mix] {done} songs analysés ou déjà à jour")
 
 

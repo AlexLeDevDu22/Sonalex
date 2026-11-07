@@ -8,6 +8,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var loading = false
     @State private var error: String? = nil
+    @State private var signingUp = false
     @FocusState private var focus: Field?
 
     private enum Field { case server, user, password }
@@ -88,6 +89,16 @@ struct LoginView: View {
                 .disabled(loading || server.isEmpty || username.isEmpty)
                 .opacity(server.isEmpty || username.isEmpty ? 0.5 : 1)
 
+                Button { signingUp = true } label: {
+                    Text(Community.pendingSignUp == nil ? "Create an Account" : "Your Request Is Waiting…")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .foregroundStyle(Color.appAccent)
+                        .background(Color.appAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+
                 about
 
                 Spacer(minLength: 20)
@@ -95,6 +106,10 @@ struct LoginView: View {
             .padding(.horizontal, 24)
             .frame(maxWidth: 500)
             .frame(maxWidth: .infinity)
+        }
+        .sheet(isPresented: $signingUp) {
+            let pending = Community.pendingSignUp
+            SignUpView(server: pending?.server ?? server, resuming: pending).appEnvironment()
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground).ignoresSafeArea())

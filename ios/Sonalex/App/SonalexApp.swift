@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct SonalexApp: App {
@@ -31,6 +32,7 @@ struct SonalexApp: App {
 
 struct RootView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -48,10 +50,16 @@ struct RootView: View {
         .task(id: session.session?.userId) {
             guard session.session != nil else { return }
             Connectivity.shared.start()
+            UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
+            SocialReporter.shared.start()
             await ServerFeatures.shared.refresh()
             // Songs on this device: offline playlists follow their changes, automatic downloads.
             await OfflineStore.shared.syncPlaylists()
             await OfflineStore.shared.autoSync()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Back to the app: anyone asking to join meanwhile?
+            if phase == .active, session.session != nil { Task { await Community.shared.refreshRequests() } }
         }
         .onOpenURL { NowPlayingExport.handle($0) }
     }

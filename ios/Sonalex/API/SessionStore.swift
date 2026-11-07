@@ -35,6 +35,7 @@ final class SessionStore {
         JellyfinClient.shared.invalidateCache()
         FavoritesStore.shared.reset()
         MixStore.shared.reset()
+        Community.shared.reset()
         ServerFeatures.shared.reset()
         session = nil
         UserDefaults.standard.removeObject(forKey: Self.key)

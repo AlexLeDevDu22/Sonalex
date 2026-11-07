@@ -27,6 +27,8 @@ Everything is in `backend/.env` (template: [`.env.example`](.env.example)):
 | `SONALEX_JELLYFIN_URL` | Jellyfin as this machine reaches it (`http://127.0.0.1:8096`, or `:8097` behind the Caddy relay) |
 | `JELLYFIN_USER`, `JELLYFIN_PW` | a Jellyfin administrator account: the server uses it to know where the files are |
 | `JELLYFIN_USER_ID` | optional (found when signing in) |
+| `JELLYFIN_API_KEY` | several users (see below) |
+| `SONALEX_SIGNUPS` | `0` = no account requests from the app |
 | `SONALEX_DATA_DIR` | data: `Musics/` (the Spotify module's library), `logs/`, `temp/`, caches (`mixinfo.json`…) |
 | `SONALEX_ONLINE` | `1` = online catalog |
 | `SONALEX_SPOTIFY_SYNC` | `1` = Spotify sync |
@@ -69,6 +71,50 @@ the previous one at its start (`automix.py`). For each transition A → B:
 Each app keeps a WebSocket open (`/api/connect`). For each Jellyfin account, the server knows which
 devices are there and which one plays: the playing device sends its state to the others, the
 others send it commands, and `transfer` moves playback from one device to another.
+
+## Several users
+
+Friends can have an account on your server, each with **their own library**: they only see their
+songs, playlists and favorites, and sync their own Spotify or Deezer account. A song several people
+have is **one file**: each library holds a hard link to it, so it takes the room of one copy, and
+saving a song a friend already has is instant (nothing is downloaded).
+
+**Turn it on**: in Jellyfin, *Dashboard → API Keys → +* (name it "Sonalex server"), put the key in
+`backend/.env` as `JELLYFIN_API_KEY=…`, then `systemctl --user restart sonalex-server`. (A user
+session only sees its own libraries: the server needs the key to manage everyone's.)
+
+**Joining**: in the app, *Create an Account* → the server's address → first name, password, music
+service. The server creates the Jellyfin user right away but **disabled**, and tells the owner (a
+notification in their app, the admin page). Accepting creates the user's folder
+(`<data>/users/<name>/Musics`) and Jellyfin library, keeps the libraries apart, and enables the
+user: their app signs in by itself. Refusing deletes the Jellyfin user. The first user (the
+server's own account) keeps their files where they were.
+
+**Music services**, per user (`SONALEX_SPOTIFY_SYNC=1`):
+
+- **Spotify**: the user signs in to Spotify in the app (*Profile → Music Service → Connect
+  Spotify*). It goes through **your** Spotify app (`SPOTIFY_CLIENT_ID`): add
+  `sonalex://spotify-callback` to its redirect URIs, and since Spotify keeps new apps in
+  development mode, add each friend's Spotify e-mail in its *User Management*. Their likes and
+  playlists then sync both ways, like yours.
+- **Deezer**: the user gives the link of their **public** Deezer profile. Their favorites and
+  playlists come into their library every night (Deezer → server only: Deezer doesn't give
+  access tokens anymore, so nothing can be written back).
+
+**Social**: the apps report what they play (`<data>/plays.db`). Everyone sees the other users'
+profiles (listening time, when, top songs and artists, song of the moment, what they're playing
+now) and, under a song, who else has it and who likes it. A user can hide themselves
+(*Music Service → Show Me to Friends*).
+
+**Admin page**: `https://<your Jellyfin address>/sonalex/admin` (sign in with a Jellyfin
+administrator): requests to accept, users (songs, room taken of their own and shared, listening
+time, last song, what they play now, their stats), latest songs of everyone, the server (disk, room
+the music takes and what sharing saves, memory, temperature, modules).
+
+How it runs: `accounts.py` (accounts, requests, libraries), `library_index.py` (who has which song),
+`user_jobs.py` (a job for one user: the sync modules work for one user at a time, in a process with
+`SONALEX_USER=<slug>`), `deezer_sync.py`, `spotify_auth.py`, `api/community.py` + `api/social.py`
+(routes, plays), `api/admin.html`.
 
 ## Modules
 

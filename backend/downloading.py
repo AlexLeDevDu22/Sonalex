@@ -168,9 +168,21 @@ def download_song(song: Song) -> str:
         print(f"✅ {song.title}")
         return existing_path
 
-    print(f"⬇ {song.artist} - {song.title}")
-
     song.generate_local_path()
+
+    # Already on the server, in a friend's library: the same file, linked (nothing downloaded).
+    import library_index
+    shared = library_index.find_file(key=song.spotify_id, isrc=song.isrc, title=song.title, artist=song.artist,
+                                     duration_ms=song.duration_ms, exclude=song.local_path)
+    if shared:
+        library_index.link(shared, song.local_path)
+        if os.path.exists(song.local_path):
+            _download_covers(song)
+            local_song.add_song(song)
+            print(f"🔗 {song.artist} - {song.title} (déjà sur le serveur)")
+            return song.local_path
+
+    print(f"⬇ {song.artist} - {song.title}")
 
     album_dir = os.path.dirname(song.local_path)
     os.makedirs(album_dir, exist_ok=True)

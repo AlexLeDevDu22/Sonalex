@@ -172,6 +172,8 @@ struct NowPlayingView: View {
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(1)
                 }
+                // Friends on the server who have it / like it.
+                SharedWithLabel(track: track)
             }
             Spacer(minLength: 8)
             if let track { trailingButtons(track) }

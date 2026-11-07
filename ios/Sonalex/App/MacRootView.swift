@@ -7,7 +7,7 @@ import UIKit
 /// lyrics / queue in a panel on the right. Every page and the whole engine are the iPhone ones.
 struct MacRootView: View {
     enum Section: Hashable {
-        case home, new, lights, search
+        case home, new, lights, search, friends
         case artists, albums, songs, favorites, downloaded, genres
         case playlist(Item)
     }
@@ -95,6 +95,11 @@ struct MacRootView: View {
                 Label("Downloaded", systemImage: "arrow.down.circle").tag(Section.downloaded)
                 Label("Genres", systemImage: "guitars").tag(Section.genres)
             }
+            if ServerFeatures.shared.accounts {
+                SwiftUI.Section("Server") {
+                    Label("Friends", systemImage: "person.2").tag(Section.friends)
+                }
+            }
             if !playlists.isEmpty {
                 SwiftUI.Section("Playlists") {
                     ForEach(RecentSources.shared.sorted(playlists)) { pl in
@@ -125,6 +130,7 @@ struct MacRootView: View {
         case .favorites: FavoritesView()
         case .downloaded: DownloadedSongsView()
         case .genres: GenresView()
+        case .friends: FriendsView()
         case .playlist(let item): PlaylistView(playlist: item)
         }
     }
