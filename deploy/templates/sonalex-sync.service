@@ -1,0 +1,13 @@
+[Unit]
+Description=Sonalex nightly Spotify <-> Jellyfin sync
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@BACKEND@
+ExecStart=@BACKEND@/.venv/bin/python @BACKEND@/full_refreshing.py
+# The run writes its own log: @DATA_DIR@/logs/sync-YYYY-MM-DD.log (30 days kept).
+StandardOutput=null
+StandardError=append:@DATA_DIR@/logs/sync-errors.log
+TimeoutStartSec=4h
+Nice=10

@@ -1,0 +1,11 @@
+[Unit]
+Description=Relais Caddy sur le port 8096 (Jellyfin + Musique API)
+After=network-online.target
+
+[Service]
+ExecStart=/home/alex/.local/bin/caddy run --config /home/alex/Hosted-Spotify/deploy/Caddyfile --adapter caddyfile
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

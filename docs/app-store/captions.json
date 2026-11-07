@@ -1,0 +1,20 @@
+{
+  "iphone": [
+    ["Toute ta musique Jellyfin", "Un lecteur pensé pour ta bibliothèque"],
+    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"],
+    ["Les paroles en direct", "Synchronisées, ligne par ligne"],
+    ["Ta bibliothèque, rangée", "Albums, artistes, playlists, favoris"],
+    ["Même sans réseau", "Télécharge tes sons sur l’appareil"],
+    ["D’un appareil à l’autre", "Lance sur le Mac, continue sur l’iPhone"]
+  ],
+  "ipad": [
+    ["Toute ta musique Jellyfin", "Un lecteur pensé pour ta bibliothèque"],
+    ["Les paroles en grand", "Synchronisées, ligne par ligne"],
+    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"]
+  ],
+  "mac": [
+    ["Sonalex sur le Mac", "Barre latérale, raccourcis clavier, menu dans la barre des menus"],
+    ["Les paroles en grand", "Synchronisées, ligne par ligne"],
+    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"]
+  ]
+}

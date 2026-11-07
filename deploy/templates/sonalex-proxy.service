@@ -1,0 +1,11 @@
+[Unit]
+Description=Sonalex proxy (Caddy on port @PUBLIC_PORT@: Jellyfin + Sonalex server)
+After=network-online.target
+
+[Service]
+ExecStart=@CADDY@ run --config @DATA_DIR@/config/Caddyfile --adapter caddyfile
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,119 @@
+name: Sonalex
+options:
+  bundleIdPrefix: com.alexgarin
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Sonalex:
+    type: application
+    platform: iOS
+    sources:
+      - Sonalex
+      - Shared
+    dependencies:
+      # Mac only: the menu bar icon (AppKit plug-in, loaded at launch from Contents/PlugIns).
+      - target: SonalexMenuBar
+        platformFilter: macOS
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+    info:
+      path: Sonalex/Info.plist
+      properties:
+        CFBundleDisplayName: Sonalex
+        LSApplicationCategoryType: public.app-category.music
+        # Only Apple's own HTTPS / TLS: exempt from export compliance documentation.
+        ITSAppUsesNonExemptEncryption: false
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIBackgroundModes: [audio]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # The Jellyfin server is the user's own, at whatever address they type, often plain http://
+        # (home servers rarely have a certificate). Don't add NSAllowsLocalNetworking: its presence
+        # makes iOS ignore NSAllowsArbitraryLoads, which would block a public http:// address.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSLocalNetworkUsageDescription: Sonalex se connecte à ton serveur Jellyfin sur ton réseau, et peut y trouver des lumières Ambilight à animer avec la musique.
+        NSBonjourServices: [_ambilight._tcp]
+        # sonalex:// (Atoll, scripts…; musique:// for what was set up before the new name), for every
+        # platform of the target: iPhone AND Mac Catalyst.
+        # Sonalex/Info.plist is generated from these properties by xcodegen *and* committed:
+        # keep both in sync, a stale committed copy is what dropped this key from the Mac app once.
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.alexgarin.sonalex
+            CFBundleURLSchemes: [sonalex, musique]
+    postBuildScripts:
+      # Fails the build if the built app doesn't declare sonalex:// (instead of finding out
+      # from "There is no application set to open the URL sonalex://…").
+      - name: Vérifier le schéma sonalex://
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
+        script: |
+          PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          if ! /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$PLIST" 2>/dev/null | grep -qx sonalex; then
+            echo "error: ${PLIST} ne déclare pas le schéma sonalex:// (CFBundleURLTypes). Relance xcodegen."
+            exit 1
+          fi
+          echo "sonalex:// déclaré dans ${PLIST}"
+    scheme:
+      # Mac build: install in /Applications and register as the sonalex:// handler.
+      postActions:
+        - name: Installer l'app Mac dans Applications
+          settingsTarget: Sonalex
+          script: "\"${PROJECT_DIR}/scripts/install-mac-app.sh\""
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexgarin.sonalex
+        # iPhone, iPad, and the Mac (Mac Catalyst, "Optimize Interface for Mac").
+        TARGETED_DEVICE_FAMILY: "1,2,6"
+        SUPPORTS_MACCATALYST: YES
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+      configs:
+        # The Mac App Store requires the App Sandbox. Only for Release (archives): debug builds stay
+        # unsandboxed, so the Now Playing export (docs/now-playing-mac.md) keeps its usual folder.
+        Release:
+          CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: Sonalex/Sonalex-mac.entitlements
+
+  # Menu bar icon of the Mac app (Mac Catalyst can't reach NSStatusBar itself).
+  SonalexMenuBar:
+    type: bundle
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - SonalexMenuBar
+      - Shared
+    info:
+      path: SonalexMenuBar/Info.plist
+      properties:
+        CFBundleDisplayName: SonalexMenuBar
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSPrincipalClass: SonalexMenuBarPlugin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexgarin.sonalex.menubar
+        # Signed again with the app's identity when it's copied into it: no team needed here.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        SKIP_INSTALL: YES

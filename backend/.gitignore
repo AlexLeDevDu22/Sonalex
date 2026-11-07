@@ -1,0 +1,17 @@
+.env
+.venv
+__pycache__
+
+backend/jellyfin_auth.py
+api_cache/
+# Tokens: they stay on the Pi only.
+chosic_data.json
+jellyfin_auth.json
+full_refreshing-user-error.log
+musique-api.log
+
+config.ini
+*.log
+.DS_Store
+todo.md
+utils/redownload_song.py

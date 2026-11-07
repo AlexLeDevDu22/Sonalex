@@ -1,0 +1,16 @@
+[Unit]
+Description=Sonalex server (Mix, Connect, optional modules)
+After=network-online.target
+
+[Service]
+WorkingDirectory=@BACKEND@
+ExecStart=@BACKEND@/.venv/bin/python -u -m uvicorn api.server:app --host 127.0.0.1 --port @SERVER_PORT@ --timeout-graceful-shutdown 3
+StandardOutput=append:@DATA_DIR@/logs/server.log
+StandardError=append:@DATA_DIR@/logs/server.log
+Restart=always
+RestartSec=3
+TimeoutStopSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=default.target

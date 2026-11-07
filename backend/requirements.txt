@@ -1,0 +1,11 @@
+yt_dlp
+requests
+ytmusicapi
+mutagen
+dotenv
+pillow
+spotdl
+fastapi
+uvicorn
+websockets
+numpy

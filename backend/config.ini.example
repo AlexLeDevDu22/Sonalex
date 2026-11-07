@@ -1,0 +1,9 @@
+# Optional: overrides of what backend/.env gives (see config.py). Copy to config.ini to use it.
+[PATHS]
+# JELLYFIN_PATH = /srv/sonalex/Musics
+# TRACKS_JSON = /srv/sonalex/tracks.json
+# PLAYLISTS_JSON = /srv/sonalex/playlists.json
+
+[PROCESS]
+# Spotify sync: delete the songs that are no longer liked nor in a synced playlist.
+ONLY_LIKED = True
