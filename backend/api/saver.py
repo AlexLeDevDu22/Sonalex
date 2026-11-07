@@ -36,7 +36,7 @@ def _spotify_id_for(key: str) -> str:
     artist = meta["artists"][0]["name"] if meta.get("artists") else ""
     match = catalog.find_spotify_track(meta["title"], artist)
     if not match:
-        raise LookupError("Titre introuvable sur Spotify, impossible de l’ajouter à la bibliothèque.")
+        raise LookupError("Song not found on Spotify: it can’t be added to the library.")
     return match["key"][3:]
 
 
@@ -88,7 +88,7 @@ def save(key: str, favorite: bool, playlist_id: str | None, user_headers: dict, 
     LIBRARY.scan_folder_of(path)
     item_id = LIBRARY.wait_for_item(path)
     if not item_id:
-        raise RuntimeError("Jellyfin n’a pas encore indexé ce titre, réessaie dans un instant.")
+        raise RuntimeError("Jellyfin hasn’t indexed this song yet, try again in a moment.")
 
     if favorite:
         jf_request("POST", f"/UserFavoriteItems/{item_id}", headers=user_headers, params={"userId": user_id})

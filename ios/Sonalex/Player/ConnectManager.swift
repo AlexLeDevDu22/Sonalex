@@ -100,7 +100,7 @@ final class ConnectManager {
         if let saved = UserDefaults.standard.string(forKey: "connect.autoMacName") { return saved }
         var host = ProcessInfo.processInfo.hostName
         guard host.hasSuffix(".local") else {
-            return SessionStore.shared.session.map { "Mac de \($0.userName.prefix(1).uppercased() + $0.userName.dropFirst())" } ?? "Mac"
+            return SessionStore.shared.session.map { "\($0.userName.prefix(1).uppercased() + $0.userName.dropFirst())’s Mac" } ?? "Mac"
         }
         host.removeLast(6)
         host = host.replacingOccurrences(of: "-", with: " ").trimmingCharacters(in: .whitespaces)
@@ -121,7 +121,7 @@ final class ConnectManager {
         if !generic.contains(system) { return system }
         let model = deviceKind == "mac" ? "Mac" : deviceKind == "tablet" ? "iPad" : "iPhone"
         if let user = SessionStore.shared.session?.userName, !user.isEmpty {
-            return "\(model) de \(user.prefix(1).uppercased() + user.dropFirst())"
+            return "\(user.prefix(1).uppercased() + user.dropFirst())’s \(model)"
         }
         return model
     }

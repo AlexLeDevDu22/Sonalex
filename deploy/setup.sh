@@ -47,7 +47,7 @@ load_settings() {
   if [ ! -f "$ENV_FILE" ]; then
     cp "$BACKEND/.env.example" "$ENV_FILE"
     chmod 600 "$ENV_FILE"
-    die "backend/.env créé depuis .env.example : remplis-le (compte Jellyfin au minimum), puis relance."
+    die "backend/.env created from .env.example: fill it in (at least the Jellyfin account), then run this again."
   fi
   DATA_DIR=$(setting SONALEX_DATA_DIR /srv/sonalex)
   PROXY=$(setting SONALEX_PROXY caddy)
@@ -55,7 +55,7 @@ load_settings() {
   JELLYFIN_PORT=$(setting SONALEX_JELLYFIN_PORT 8097)
   SERVER_PORT=$(setting SONALEX_SERVER_PORT 8098)
   case "$(setting SONALEX_SPOTIFY_SYNC 0)" in 1|true|yes|on) SPOTIFY_SYNC=1 ;; *) SPOTIFY_SYNC=0 ;; esac
-  [ "$PROXY" = caddy ] || [ "$PROXY" = none ] || die "SONALEX_PROXY doit valoir caddy ou none (pas « $PROXY »)"
+  [ "$PROXY" = caddy ] || [ "$PROXY" = none ] || die "SONALEX_PROXY must be caddy or none (not \"$PROXY\")"
 }
 
 render() {  # template destination
@@ -65,7 +65,7 @@ render() {  # template destination
 }
 
 do_packages() {
-  step "Paquets système"
+  step "System packages"
   local missing=() pkg
   for pkg in ffmpeg python3-venv python3-pip curl; do
     dpkg -s "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
@@ -75,14 +75,14 @@ do_packages() {
   fi
   ok "ffmpeg, python3-venv, curl"
   if ! command -v jellyfin >/dev/null 2>&1 && [ ! -x /usr/bin/jellyfin ]; then
-    warn "Jellyfin absent : installation (script officiel de Jellyfin)"
+    warn "Jellyfin not found: installing it (Jellyfin's official script)"
     curl -fsSL https://repo.jellyfin.org/install-debuntu.sh | sudo bash
   fi
-  ok "Jellyfin installé"
+  ok "Jellyfin installed"
 }
 
 do_data() {
-  step "Dossier de données ($DATA_DIR)"
+  step "Data folder ($DATA_DIR)"
   sudo mkdir -p "$DATA_DIR"/{Musics,logs,temp/stream,config}
   sudo chown "$USER":"$USER" "$DATA_DIR" "$DATA_DIR"/{logs,temp,temp/stream,config}
   [ -O "$DATA_DIR/Musics" ] || sudo chown "$USER":"$USER" "$DATA_DIR/Musics"
@@ -93,25 +93,25 @@ do_data() {
     [ -f "$DATA_DIR/$f" ] || echo '{}' > "$DATA_DIR/$f"
   done
   ok "Musics, logs, temp, config"
-  echo "  Dans Jellyfin, ajoute une bibliothèque Musique sur $DATA_DIR/Musics (ou garde la tienne)."
+  echo "  In Jellyfin, add a Music library on $DATA_DIR/Musics (or keep yours)."
 }
 
 do_python() {
-  step "Environnement Python (backend/.venv)"
+  step "Python environment (backend/.venv)"
   [ -d "$BACKEND/.venv" ] || python3 -m venv "$BACKEND/.venv"
   "$BACKEND/.venv/bin/pip" install -q --upgrade pip
   "$BACKEND/.venv/bin/pip" install -q -r "$BACKEND/requirements.txt"
-  ok "dépendances installées"
+  ok "dependencies installed"
   if [ "$SPOTIFY_SYNC" = 1 ] && [ ! -f "$BACKEND/chosic_data.json" ]; then
-    warn "synchro Spotify activée mais backend/chosic_data.json manquant (voir backend/README.md)"
+    warn "Spotify sync is on but backend/chosic_data.json is missing (see backend/README.md)"
   fi
 }
 
 do_proxy() {
   if [ "$PROXY" != caddy ]; then
-    step "Relais : géré par toi (SONALEX_PROXY=none)"
-    echo "  Route /sonalex/* (préfixe retiré) vers http://127.0.0.1:$SERVER_PORT, le reste vers Jellyfin."
-    echo "  Exemples nginx / Caddy : deploy/README.md."
+    step "Reverse proxy: yours (SONALEX_PROXY=none)"
+    echo "  Route /sonalex/* (prefix stripped) to http://127.0.0.1:$SERVER_PORT, the rest to Jellyfin."
+    echo "  nginx / Caddy examples: deploy/README.md."
     return
   fi
   step "Caddy ($CADDY)"
@@ -122,26 +122,26 @@ do_proxy() {
   fi
   ok "$("$CADDY" version | cut -d' ' -f1)"
 
-  step "Jellyfin sur le port interne $JELLYFIN_PORT (Caddy prend le $PUBLIC_PORT)"
+  step "Jellyfin on internal port $JELLYFIN_PORT (Caddy takes $PUBLIC_PORT)"
   local net=/etc/jellyfin/network.xml
   if sudo test -f "$net"; then
     if ! sudo grep -q "<InternalHttpPort>$JELLYFIN_PORT</InternalHttpPort>" "$net"; then
       sudo sed -i "s|<InternalHttpPort>[0-9]*</InternalHttpPort>|<InternalHttpPort>$JELLYFIN_PORT</InternalHttpPort>|" "$net"
       sudo systemctl restart jellyfin
-      ok "port passé à $JELLYFIN_PORT, Jellyfin redémarré"
+      ok "port changed to $JELLYFIN_PORT, Jellyfin restarted"
     else
-      ok "déjà sur $JELLYFIN_PORT"
+      ok "already on $JELLYFIN_PORT"
     fi
     sudo grep -q "<string>127.0.0.1</string>" "$net" \
-      || warn "Jellyfin → Tableau de bord → Réseau : ajoute 127.0.0.1 aux « Proxies connus »"
+      || warn "Jellyfin → Dashboard → Networking: add 127.0.0.1 to \"Known proxies\""
   else
-    warn "$net absent : lance Jellyfin une fois (http://<serveur>:8096), fais l'assistant, puis relance ce script"
+    warn "$net not found: start Jellyfin once (http://<server>:8096), go through its setup, then run this again"
   fi
   sudo systemctl enable --now jellyfin >/dev/null 2>&1 || true
 }
 
 do_services() {
-  step "Services utilisateur (systemd)"
+  step "User services (systemd)"
   # Without "linger", user services only start once you log in; with it, at boot.
   if [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" != yes ]; then
     sudo loginctl enable-linger "$USER"
@@ -152,7 +152,7 @@ do_services() {
     if [ -e "$UNIT_DIR/$unit" ] || [ -L "$UNIT_DIR/$unit" ]; then
       systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
       rm -f "$UNIT_DIR/$unit"
-      ok "ancien service $unit retiré"
+      ok "old service $unit removed"
     fi
   done
 
@@ -161,7 +161,7 @@ do_services() {
   if [ "$PROXY" = caddy ]; then
     render Caddyfile "$DATA_DIR/config/Caddyfile"
     "$CADDY" validate --config "$DATA_DIR/config/Caddyfile" --adapter caddyfile >/dev/null 2>&1 \
-      || die "Caddyfile invalide : $DATA_DIR/config/Caddyfile"
+      || die "Invalid Caddyfile: $DATA_DIR/config/Caddyfile"
     render sonalex-proxy.service "$UNIT_DIR/sonalex-proxy.service"
     units+=(sonalex-proxy.service)
   else
@@ -185,25 +185,25 @@ do_services() {
 }
 
 do_check() {
-  step "Vérifications"
+  step "Checks"
   sleep 6
   check() {  # name url
-    if curl -fsS -o /dev/null --max-time 10 "$2"; then ok "$1"; else warn "$1 ne répond pas ($2)"; fi
+    if curl -fsS -o /dev/null --max-time 10 "$2"; then ok "$1"; else warn "$1 isn't answering ($2)"; fi
   }
   check "Sonalex server ($SERVER_PORT)" "http://127.0.0.1:$SERVER_PORT/api/health"
   if [ "$PROXY" = caddy ]; then
     check "Jellyfin ($JELLYFIN_PORT)" "http://127.0.0.1:$JELLYFIN_PORT/System/Info/Public"
-    check "Adresse publique ($PUBLIC_PORT → Jellyfin)" "http://127.0.0.1:$PUBLIC_PORT/System/Info/Public"
-    check "Adresse publique ($PUBLIC_PORT → Sonalex)" "http://127.0.0.1:$PUBLIC_PORT/sonalex/api/health"
+    check "Public address ($PUBLIC_PORT → Jellyfin)" "http://127.0.0.1:$PUBLIC_PORT/System/Info/Public"
+    check "Public address ($PUBLIC_PORT → Sonalex)" "http://127.0.0.1:$PUBLIC_PORT/sonalex/api/health"
   fi
   if [ "$SPOTIFY_SYNC" = 1 ]; then
-    systemctl --user list-timers sonalex-sync.timer --no-pager | sed -n 2p | sed 's/^/  prochaine synchro : /'
+    systemctl --user list-timers sonalex-sync.timer --no-pager | sed -n 2p | sed 's/^/  next sync: /'
   fi
   cat <<MSG
 
-Dans l'app Sonalex, connecte-toi avec l'adresse de Jellyfin (http://<serveur>:$PUBLIC_PORT, ou ton
-nom de domaine) : l'app trouve le serveur Sonalex toute seule à côté.
-Journaux : $DATA_DIR/logs/ · état : systemctl --user status sonalex-server
+In the Sonalex app, sign in with your Jellyfin address (http://<server>:$PUBLIC_PORT, or your
+domain name): the app finds the Sonalex server next to it on its own.
+Logs: $DATA_DIR/logs/ · status: systemctl --user status sonalex-server
 MSG
 }
 
@@ -216,5 +216,5 @@ case "${1:-all}" in
   services) do_services ;;
   check) do_check ;;
   all) do_packages; do_data; do_python; do_proxy; do_services; do_check ;;
-  *) die "étape inconnue : $1 (packages, data, python, proxy, services, check, all)" ;;
+  *) die "unknown step: $1 (packages, data, python, proxy, services, check, all)" ;;
 esac

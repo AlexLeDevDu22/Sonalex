@@ -1,34 +1,34 @@
-# Confidentialité – Sonalex
+# Privacy – Sonalex
 
-*Dernière mise à jour : 7 novembre 2026*
+*Last updated: November 7, 2026*
 
-**En bref : Sonalex ne collecte aucune donnée.** Il n'y a ni compte Sonalex, ni publicité, ni
-statistiques, ni traceur. L'app ne parle qu'aux serveurs que tu choisis.
+**In short: Sonalex collects no data.** There is no Sonalex account, no ads, no analytics and no
+tracking. The app only talks to the servers you choose.
 
-## Ce qui reste sur ton appareil
+## What stays on your device
 
-- l'adresse de ton serveur et ton nom d'utilisateur, et le jeton de connexion que Jellyfin donne à l'app ;
-- tes réglages, ta file d'attente et ton historique d'écoute (pour l'aléatoire intelligent) ;
-- les sons et pochettes que tu télécharges, et un cache des pages déjà ouvertes.
+- your server's address, your username, and the sign-in token Jellyfin gives the app;
+- your settings, your queue and your listening history (for smart shuffle);
+- the songs and artwork you download, and a cache of pages you've already opened.
 
-Tout est supprimé si tu supprimes l'app. La déconnexion efface la session et la file d'attente.
+Everything is removed when you delete the app. Signing out clears the session and the queue.
 
-## Ce qui part vers tes serveurs
+## What goes to your servers
 
-- **Ton serveur Jellyfin** : ce que fait tout client Jellyfin (connexion, bibliothèque, lecture,
-  favoris, playlists, morceaux écoutés pour l'historique et les statistiques de Jellyfin).
-- **Le serveur Sonalex**, s'il est installé à côté de ton Jellyfin : les sons à préparer pour le Mix,
-  l'état de lecture partagé entre tes appareils (Connect), et des informations techniques sur la
-  lecture (événements du lecteur) qui aident à corriger les bugs. Ces données restent sur ce serveur.
+- **Your Jellyfin server**: what any Jellyfin client sends (sign-in, library, playback, favorites,
+  playlists, played songs for Jellyfin's history and statistics).
+- **The Sonalex server**, if one is installed next to your Jellyfin: the songs to prepare for the
+  Mix, the playback state shared between your devices (Connect), and technical playback events that
+  help fix bugs. This data stays on that server.
 
-Ces serveurs appartiennent à la personne qui les héberge (toi, ou quelqu'un qui t'a donné un
-compte), pas au développeur de Sonalex : c'est elle qui en est responsable.
+These servers belong to whoever hosts them (you, or someone who gave you an account), not to the
+developer of Sonalex: they are responsible for them.
 
-## Réseau local
+## Local network
 
-Sur iPhone et iPad, l'app demande l'accès au réseau local pour joindre un serveur chez toi, et
-pour trouver d'éventuelles lumières Ambilight à animer avec la musique.
+On iPhone and iPad, the app asks for local network access to reach a server at home, and to find
+Ambilight lights to sync with the music.
 
 ## Contact
 
-Pour toute question : une issue sur https://github.com/AlexLeDevDu22/sonalex/issues
+For any question, open an issue: https://github.com/AlexLeDevDu22/sonalex/issues

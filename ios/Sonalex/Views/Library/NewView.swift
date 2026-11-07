@@ -19,21 +19,21 @@ struct NewView: View {
                 LazyVStack(alignment: .leading, spacing: 34) {
                     heroCarousel
                     if !songs.isEmpty {
-                        SongGridShelf(title: "Nouveaux morceaux", songs: songs, destination: .songs)
+                        SongGridShelf(title: "New Songs", songs: songs, destination: .songs)
                     }
                     if !albums.isEmpty {
-                        Shelf("Albums récents", destination: .albums) {
+                        Shelf("Recent Albums", destination: .albums) {
                             ForEach(albums) { ItemCard(item: $0) }
                         }
                     }
                     if !artists.isEmpty {
-                        Shelf("Artistes à découvrir", destination: .artists) {
+                        Shelf("Artists to Discover", destination: .artists) {
                             ForEach(artists) { ArtistCircle(artist: $0) }
                         }
                     }
                     if !genres.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            SectionHeader(title: "Parcourir par genre", destination: .genres)
+                            SectionHeader(title: "Browse by Genre", destination: .genres)
                             GenreGrid(genres: Array(genres.prefix(8)))
                                 .padding(.horizontal, 20)
                         }
@@ -43,7 +43,7 @@ struct NewView: View {
                 .padding(.bottom, 30)
             }
         }
-        .navigationTitle("Nouveautés")
+        .navigationTitle("New")
         .libraryTask { await load() }
     }
 
@@ -93,7 +93,7 @@ private struct HeroCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("AJOUTÉ RÉCEMMENT")
+                Text("RECENTLY ADDED")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text(album.title)

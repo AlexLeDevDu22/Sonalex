@@ -2,84 +2,79 @@
 
 # Sonalex
 
-**Le lecteur de musique pour ton serveur [Jellyfin](https://jellyfin.org)**, sur iPhone, iPad et Mac.
+**The music player for your [Jellyfin](https://jellyfin.org) server**, on iPhone, iPad and Mac.
 
-> *English: Sonalex is a native music player for any Jellyfin server (iOS, iPadOS, macOS). An
-> optional self-hosted companion server adds DJ-style transitions and multi-device playback. The
-> app is in French for now.*
+Sonalex connects to **any Jellyfin server** with your usual account: there is no Sonalex account,
+and nothing is sent anywhere but to your server.
 
-Sonalex se connecte à **n'importe quel serveur Jellyfin** avec ton compte habituel : il n'y a
-pas de compte Sonalex, et rien n'est envoyé ailleurs que sur ton serveur.
-
-| Avec Jellyfin seul | Avec le serveur Sonalex en plus (optionnel) |
+| With Jellyfin alone | With the Sonalex server too (optional) |
 |---|---|
-| Accueil, nouveautés, bibliothèque (artistes, albums, morceaux, favoris, genres, playlists) | **Mix** : transitions de DJ entre les sons (calées sur le tempo, jamais par-dessus une voix) |
-| Lecteur plein écran, paroles synchronisées, file d'attente, aléatoire intelligent | **Connect** : un appareil joue, les autres le pilotent ; passer la lecture de l'iPhone au Mac |
-| Téléchargements pour écouter hors connexion | Modules activables par le propriétaire du serveur (voir plus bas) |
-| AirPlay, écran verrouillé, Dynamic Island, Mac avec barre des menus | |
+| Home, new releases, library (artists, albums, songs, favorites, genres, playlists) | **Mix**: DJ-style transitions between songs (beat-matched, never over a voice) |
+| Full-screen player, synced lyrics, queue, smart shuffle | **Connect**: one device plays, the others control it; move playback from iPhone to Mac |
+| Downloads for offline listening | Modules the server owner can turn on (see below) |
+| AirPlay, lock screen, Dynamic Island, Mac app with menu bar controls | |
 
-## L'app
+## The app
 
-- **App Store** : bientôt.
-- **Compiler soi-même** : [`ios/README.md`](ios/README.md) (Xcode 26, XcodeGen).
+- **App Store**: coming soon.
+- **Build it yourself**: [`ios/README.md`](ios/README.md) (Xcode 26, XcodeGen).
 
-À la connexion, tape l'adresse de ton Jellyfin (par ex. `https://jellyfin.exemple.fr` ou
-`http://192.168.1.10:8096`). Si un serveur Sonalex répond à la même adresse sous `/sonalex`, l'app
-l'utilise toute seule. Sinon, elle fonctionne comme un client Jellyfin classique.
+When signing in, type your Jellyfin address (e.g. `https://jellyfin.example.com` or
+`http://192.168.1.10:8096`). If a Sonalex server answers at the same address under `/sonalex`, the
+app uses it on its own. Otherwise it works as a regular Jellyfin client.
 
-## Le serveur Sonalex (optionnel)
+## The Sonalex server (optional)
 
-Un petit serveur Python (FastAPI) qui tourne **sur la même machine que Jellyfin** : il lit les
-fichiers de ta bibliothèque pour préparer les transitions du Mix.
+A small Python server (FastAPI) that runs **on the same machine as Jellyfin**: it reads your
+library's files to prepare the Mix transitions.
 
-### Installation (Debian, Ubuntu, Raspberry Pi OS)
+### Install (Debian, Ubuntu, Raspberry Pi OS)
 
 ```bash
 git clone https://github.com/AlexLeDevDu22/sonalex.git
 cd sonalex
-bash deploy/setup.sh          # crée backend/.env et s'arrête : remplis-le
-nano backend/.env             # adresse de Jellyfin + un compte administrateur
-bash deploy/setup.sh          # installe tout, démarre les services, vérifie
+bash deploy/setup.sh          # creates backend/.env and stops: fill it in
+nano backend/.env             # Jellyfin address + an administrator account
+bash deploy/setup.sh          # installs everything, starts the services, checks
 ```
 
-Le script est idempotent : il ne refait que ce qui manque. Il peut aussi faire une seule étape
-(`packages`, `data`, `python`, `proxy`, `services`, `check`). Détails, ports et configuration avec
-ton propre reverse proxy (nginx, Caddy, Traefik) : [`deploy/README.md`](deploy/README.md).
+The script is idempotent: it only does what's missing. It can also run a single step
+(`packages`, `data`, `python`, `proxy`, `services`, `check`). Details, ports, and setup behind your
+own reverse proxy (nginx, Caddy, Traefik): [`deploy/README.md`](deploy/README.md).
 
-Fonctionnement du serveur (Mix, Connect, modules, API) : [`backend/README.md`](backend/README.md).
+How the server works (Mix, Connect, modules, API): [`backend/README.md`](backend/README.md).
 
 ### Modules
 
-Dans `backend/.env`. Tous désactivés par défaut :
+In `backend/.env`. All off by default:
 
-| Réglage | Ce que ça ajoute |
+| Setting | What it adds |
 |---|---|
-| `SONALEX_ONLINE=1` | **Catalogue en ligne** : chercher, écouter et ajouter à la bibliothèque des sons qu'elle n'a pas. L'audio vient de YouTube : vérifie que c'est autorisé chez toi avant de l'activer. |
-| `SONALEX_SPOTIFY_SYNC=1` | **Synchro Spotify** : likes et playlists suivent un compte Spotify, la nuit et en direct. Expérimental. |
+| `SONALEX_ONLINE=1` | **Online catalog**: search, play and add to your library songs it doesn't have. The audio comes from YouTube: check that this is allowed where you live before turning it on. |
+| `SONALEX_SPOTIFY_SYNC=1` | **Spotify sync**: likes and playlists follow a Spotify account, every night and live. Experimental. |
 
-**Aucune clé n'est fournie avec le projet** : chacun met les siennes dans `backend/.env`
-(Spotify, Last.fm). Comment les obtenir, et ce que j'utilise de mon côté :
-[`backend/README.md`](backend/README.md#modules).
+**No keys ship with the project**: everyone puts their own in `backend/.env` (Spotify, Last.fm).
+How to get them, and what I use myself: [`backend/README.md`](backend/README.md#modules).
 
-## Structure
+## Layout
 
-| Dossier | Contenu |
+| Folder | Contents |
 |---|---|
-| `ios/` | L'app (SwiftUI, iOS 18+, Mac Catalyst) |
-| `backend/` | Le serveur Sonalex et la synchro Spotify |
-| `deploy/` | Installation : `setup.sh`, modèles des services systemd et du relais Caddy |
-| `docs/` | Intégrations Mac (`now-playing-mac.md`), fiche App Store (`app-store/`) |
+| `ios/` | The app (SwiftUI, iOS 18+, Mac Catalyst) |
+| `backend/` | The Sonalex server and the Spotify sync |
+| `deploy/` | Install: `setup.sh`, systemd service and Caddy templates |
+| `docs/` | Mac integrations (`now-playing-mac.md`), App Store listing (`app-store/`) |
 
-## Confidentialité
+## Privacy
 
-L'app ne collecte rien : voir [`PRIVACY.md`](PRIVACY.md).
+The app collects nothing: see [`PRIVACY.md`](PRIVACY.md).
 
-## Contribuer
+## Contributing
 
-Les issues et pull requests sont bienvenues. Sonalex n'est pas affilié au projet Jellyfin, ni à
-Spotify, YouTube ou Apple.
+Issues and pull requests are welcome. Sonalex is not affiliated with the Jellyfin project, nor with
+Spotify, YouTube or Apple.
 
-## Licence
+## License
 
-[MIT](LICENSE) : tu peux utiliser, modifier et redistribuer le code, y compris dans une app
-publiée, en gardant la mention de copyright.
+[MIT](LICENSE): you can use, modify and redistribute the code, including in a published app, as
+long as you keep the copyright notice.

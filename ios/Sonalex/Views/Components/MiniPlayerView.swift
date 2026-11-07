@@ -37,7 +37,7 @@ struct MiniPlayerView: View {
                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(track?.title ?? "Aucune lecture en cours")
+                Text(track?.title ?? "Not Playing")
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 if ConnectManager.shared.isRemote {
@@ -117,14 +117,14 @@ private struct AddToPlaylistPresenter: ViewModifier {
             CreditsSheet(track: item).appEnvironment()
         }
         // Unstable network and songs not on the device: play only the downloaded ones, or try all?
-        .alert("Connexion instable", isPresented: Binding(
+        .alert("Unstable Connection", isPresented: Binding(
             get: { player.showNowPlaying == inNowPlaying && player.offlineChoice != nil },
             set: { if !$0 { player.offlineChoice = nil } }), presenting: player.offlineChoice) { choice in
-            Button("Sons téléchargés (\(choice.localCount))") { player.resolveOfflineChoice(localOnly: true) }
-            Button("Tout essayer") { player.resolveOfflineChoice(localOnly: false) }
-            Button("Annuler", role: .cancel) { player.offlineChoice = nil }
+            Button("Downloaded Songs (\(choice.localCount))") { player.resolveOfflineChoice(localOnly: true) }
+            Button("Try Everything") { player.resolveOfflineChoice(localOnly: false) }
+            Button("Cancel", role: .cancel) { player.offlineChoice = nil }
         } message: { _ in
-            Text("Le réseau répond mal. Lire seulement les sons sur cet appareil, ou essayer de tout charger ?")
+            Text("The network is responding poorly. Play only the songs on this device, or try to load everything?")
         }
     }
 }
@@ -155,7 +155,7 @@ struct AddToPlaylistSheet: View {
                             .foregroundStyle(Color.appAccent)
                             .frame(width: 56, height: 56)
                             .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                        Text("Nouvelle playlist…").foregroundStyle(Color.appAccent)
+                        Text("New Playlist…").foregroundStyle(Color.appAccent)
                     }
                 }
                 ForEach(RecentSources.shared.sorted(playlists)) { pl in
@@ -174,15 +174,15 @@ struct AddToPlaylistSheet: View {
             }
             .listStyle(.plain)
             .overlay { if loading { ProgressView() } }
-            .navigationTitle("Ajouter à une playlist")
+            .navigationTitle("Add to a Playlist")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
-            .alert("Nouvelle playlist", isPresented: $showNew) {
-                TextField("Titre", text: $newName)
-                Button("Annuler", role: .cancel) { newName = "" }
-                Button("Créer") { create() }
+            .alert("New Playlist", isPresented: $showNew) {
+                TextField("Title", text: $newName)
+                Button("Cancel", role: .cancel) { newName = "" }
+                Button("Create") { create() }
             }
         }
         .presentationDetents([.medium, .large])
@@ -202,7 +202,7 @@ struct AddToPlaylistSheet: View {
             do {
                 let ids = try await JellyfinClient.shared.tracks(for: item).map(\.id)
                 try await JellyfinClient.shared.addToPlaylist(playlist.id, ids: ids)
-                ToastCenter.shared.show("Ajouté à « \(playlist.title) »", systemImage: "text.badge.checkmark")
+                ToastCenter.shared.show("Added to “\(playlist.title)”", systemImage: "text.badge.checkmark")
                 dismiss()
             } catch {
                 ToastCenter.shared.error(error)
@@ -212,13 +212,13 @@ struct AddToPlaylistSheet: View {
 
     /// Online song: downloaded into the library and added to the playlist (takes a few seconds).
     private func saveOnline(_ key: String, into playlist: Item) {
-        ToastCenter.shared.show("Ajout à « \(playlist.title) »…", systemImage: "arrow.down.circle")
+        ToastCenter.shared.show("Adding to “\(playlist.title)”…", systemImage: "arrow.down.circle")
         dismiss()
         Task {
             do {
                 let saved = try await SonalexAPI.shared.save(key, favorite: false, playlistId: playlist.id)
                 PlayerManager.shared.replaceTrack(key: key, with: saved)
-                ToastCenter.shared.show("Ajouté à « \(playlist.title) »", systemImage: "text.badge.checkmark")
+                ToastCenter.shared.show("Added to “\(playlist.title)”", systemImage: "text.badge.checkmark")
             } catch {
                 ToastCenter.shared.error(error)
             }
@@ -239,7 +239,7 @@ struct AddToPlaylistSheet: View {
                 }
                 let ids = try await JellyfinClient.shared.tracks(for: item).map(\.id)
                 try await JellyfinClient.shared.createPlaylist(name: name, ids: ids)
-                ToastCenter.shared.show("Playlist créée", systemImage: "music.note.list")
+                ToastCenter.shared.show("Playlist Created", systemImage: "music.note.list")
                 dismiss()
             } catch {
                 ToastCenter.shared.error(error)

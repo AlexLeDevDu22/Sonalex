@@ -125,7 +125,7 @@ final class FavoritesStore {
         guard overrides[item.id] != true else { return }
         overrides[item.id] = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        ToastCenter.shared.show("Ajout à ta bibliothèque…", systemImage: "arrow.down.circle")
+        ToastCenter.shared.show("Adding to your library…", systemImage: "arrow.down.circle")
         Task {
             do {
                 let saved = try await SonalexAPI.shared.save(key, favorite: true)
@@ -133,7 +133,7 @@ final class FavoritesStore {
                 ConnectManager.shared.sendFavorite(ids: [saved.id, item.id], value: true)
                 PlayerManager.shared.replaceTrack(key: key, with: saved)
                 PlayerManager.shared.syncRemoteCommandState()
-                ToastCenter.shared.show("Ajouté à tes favoris", systemImage: "star.fill")
+                ToastCenter.shared.show("Added to Favorites", systemImage: "star.fill")
             } catch {
                 overrides[item.id] = nil
                 ToastCenter.shared.error(error)

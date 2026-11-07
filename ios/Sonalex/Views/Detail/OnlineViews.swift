@@ -92,10 +92,10 @@ struct OnlineArtistView: View {
                         Shelf("Albums") { ForEach(page.albums) { OnlineAlbumCard(album: $0) } }
                     }
                     if !page.singles.isEmpty {
-                        Shelf("Singles et EP") { ForEach(page.singles) { OnlineAlbumCard(album: $0) } }
+                        Shelf("Singles & EPs") { ForEach(page.singles) { OnlineAlbumCard(album: $0) } }
                     }
                 } else if let error {
-                    ContentUnavailableView("Artiste indisponible", systemImage: "wifi.exclamationmark", description: Text(error))
+                    ContentUnavailableView("Artist Unavailable", systemImage: "wifi.exclamationmark", description: Text(error))
                 } else {
                     LoadingView()
                 }
@@ -123,7 +123,7 @@ struct OnlineArtistView: View {
 
     private func topTracks(_ top: [OnlineTrack]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            SectionHeader(title: "Titres populaires")
+            SectionHeader(title: "Popular Songs")
             // One column on a phone, two or three on a wide screen.
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 24)], spacing: 0) {
                 ForEach(Array(top.enumerated()), id: \.element.key) { i, track in
@@ -215,7 +215,7 @@ struct OnlineAlbumView: View {
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 20, trailing: 20))
             } else if let error {
-                ContentUnavailableView("Album indisponible", systemImage: "wifi.exclamationmark", description: Text(error))
+                ContentUnavailableView("Album Unavailable", systemImage: "wifi.exclamationmark", description: Text(error))
                     .listRowSeparator(.hidden)
             } else {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40).listRowSeparator(.hidden)
@@ -343,7 +343,7 @@ struct OnlinePlaylistView: View {
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 20, trailing: 20))
             } else if let error {
-                ContentUnavailableView("Playlist indisponible", systemImage: "wifi.exclamationmark", description: Text(error))
+                ContentUnavailableView("Playlist Unavailable", systemImage: "wifi.exclamationmark", description: Text(error))
                     .listRowSeparator(.hidden)
             } else {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40).listRowSeparator(.hidden)

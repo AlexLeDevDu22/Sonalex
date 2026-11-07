@@ -232,7 +232,7 @@ final class MixEngine {
     }
 
     private func fetch(_ spec: Spec) async throws -> Piece {
-        guard let songKey = key(spec.entryId) else { throw Failure.unavailable("son retiré de la file") }
+        guard let songKey = key(spec.entryId) else { throw Failure.unavailable("song removed from the queue") }
         var query = ["key": songKey, "start": String(spec.start)]
         if let prev = key(spec.prevId) { query["prev"] = prev }
         if let next = key(spec.nextId) { query["next"] = next }

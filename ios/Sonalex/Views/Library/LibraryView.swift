@@ -5,11 +5,11 @@ struct LibraryView: View {
 
     private let entries: [(String, String, Route)] = [
         ("Playlists", "music.note.list", .playlists),
-        ("Artistes", "music.microphone", .artists),
+        ("Artists", "music.microphone", .artists),
         ("Albums", "square.stack", .albums),
-        ("Morceaux", "music.note", .songs),
-        ("Favoris", "star", .favorites),
-        ("Téléchargés", "arrow.down.circle", .downloaded),
+        ("Songs", "music.note", .songs),
+        ("Favorites", "star", .favorites),
+        ("Downloaded", "arrow.down.circle", .downloaded),
         ("Genres", "guitars", .genres),
     ]
 
@@ -40,7 +40,7 @@ struct LibraryView: View {
                 }
 
                 if !recent.isEmpty {
-                    Text("Ajouts récents")
+                    Text("Recently Added")
                         .font(.title2.bold())
                         .padding(.top, 28)
                         .padding(.bottom, 12)
@@ -50,7 +50,7 @@ struct LibraryView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 24)
         }
-        .navigationTitle("Bibliothèque")
+        .navigationTitle("Library")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileMenu() } }
         .libraryTask {
             recent = (try? await JellyfinClient.shared.items(["IncludeItemTypes": "MusicAlbum", "SortBy": "DateCreated,SortName",
@@ -92,7 +92,7 @@ struct PlaylistsView: View {
                         .foregroundStyle(Color.appAccent)
                         .frame(width: 56, height: 56)
                         .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    Text("Nouvelle playlist…").foregroundStyle(Color.appAccent)
+                    Text("New Playlist…").foregroundStyle(Color.appAccent)
                 }
             }
             ForEach(RecentSources.shared.sorted(playlists)) { pl in
@@ -101,7 +101,7 @@ struct PlaylistsView: View {
                 }
                 .contextMenu { ItemMenu(item: pl) }
                 .swipeActions {
-                    Button(role: .destructive) { toDelete = pl } label: { Label("Supprimer", systemImage: "trash") }
+                    Button(role: .destructive) { toDelete = pl } label: { Label("Delete", systemImage: "trash") }
                 }
             }
         }
@@ -109,14 +109,14 @@ struct PlaylistsView: View {
         .overlay { if loading && playlists.isEmpty { ProgressView() } }
         .navigationTitle("Playlists")
         .libraryTask { await load() }
-        .alert("Nouvelle playlist", isPresented: $showNew) {
-            TextField("Titre", text: $newName)
-            Button("Annuler", role: .cancel) { newName = "" }
-            Button("Créer") { create() }
+        .alert("New Playlist", isPresented: $showNew) {
+            TextField("Title", text: $newName)
+            Button("Cancel", role: .cancel) { newName = "" }
+            Button("Create") { create() }
         }
-        .confirmationDialog("Supprimer « \(toDelete?.title ?? "") » ?", isPresented: Binding(
+        .confirmationDialog("Delete “\(toDelete?.title ?? "")”?", isPresented: Binding(
             get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible) {
-            Button("Supprimer la playlist", role: .destructive) { delete() }
+            Button("Delete Playlist", role: .destructive) { delete() }
         }
     }
 
@@ -133,7 +133,7 @@ struct PlaylistsView: View {
         Task {
             do {
                 try await JellyfinClient.shared.createPlaylist(name: name, ids: [])
-                ToastCenter.shared.show("Playlist créée", systemImage: "music.note.list")
+                ToastCenter.shared.show("Playlist Created", systemImage: "music.note.list")
                 await load()
             } catch { ToastCenter.shared.error(error) }
         }
@@ -190,8 +190,8 @@ struct ArtistsView: View {
         }
         .listStyle(.plain)
         .overlay { if loading { ProgressView() } }
-        .navigationTitle("Artistes")
-        .searchable(text: $filter, prompt: "Rechercher dans les artistes")
+        .navigationTitle("Artists")
+        .searchable(text: $filter, prompt: "Search artists")
         .libraryTask {
             artists = (try? await JellyfinClient.shared.albumArtists()) ?? artists
             loading = false
@@ -203,7 +203,7 @@ struct ArtistsView: View {
 
 struct AlbumsView: View {
     enum Sort: String, CaseIterable {
-        case title = "Titre", artist = "Artiste", recent = "Ajout récent", year = "Année"
+        case title = "Title", artist = "Artist", recent = "Recently Added", year = "Year"
 
         var query: [String: String] {
             switch self {
@@ -230,11 +230,11 @@ struct AlbumsView: View {
         }
         .overlay { if !pager.loadedOnce { ProgressView() } }
         .navigationTitle("Albums")
-        .searchable(text: $filter, prompt: "Rechercher dans les albums")
+        .searchable(text: $filter, prompt: "Search albums")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("Trier par", selection: $sort) {
+                    Picker("Sort By", selection: $sort) {
                         ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                 } label: {
@@ -262,14 +262,14 @@ struct AlbumsView: View {
 
 struct SongsView: View {
     var body: some View {
-        SongListView(title: "Morceaux", query: ["IncludeItemTypes": "Audio", "SortBy": "DateCreated,SortName", "SortOrder": "Descending"])
+        SongListView(title: "Songs", query: ["IncludeItemTypes": "Audio", "SortBy": "DateCreated,SortName", "SortOrder": "Descending"])
     }
 }
 
 struct FavoritesView: View {
     var body: some View {
-        SongListView(title: "Favoris", query: ["IncludeItemTypes": "Audio", "Filters": "IsFavorite", "SortBy": "DateCreated,SortName", "SortOrder": "Descending"],
-                     cacheable: false, emptyMessage: "Touche ☆ sur un morceau pour l’ajouter à tes favoris.")
+        SongListView(title: "Favorites", query: ["IncludeItemTypes": "Audio", "Filters": "IsFavorite", "SortBy": "DateCreated,SortName", "SortOrder": "Descending"],
+                     cacheable: false, emptyMessage: "Tap ☆ on a song to add it to your favorites.")
     }
 }
 
@@ -292,8 +292,8 @@ struct DownloadedSongsView: View {
         List {
             if !songs.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    PlayShuffleButtons(onPlay: { player.play(songs, shuffle: false, source: "Téléchargés", sourceId: "downloaded") },
-                                       onShuffle: { player.play(songs, shuffle: true, source: "Téléchargés", sourceId: "downloaded") })
+                    PlayShuffleButtons(onPlay: { player.play(songs, shuffle: false, source: "Downloaded", sourceId: "downloaded") },
+                                       onShuffle: { player.play(songs, shuffle: true, source: "Downloaded", sourceId: "downloaded") })
                     Text("\(Format.songCount(songs.count)) · \(ByteCountFormatter.string(fromByteCount: store.usedBytes, countStyle: .file))")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -302,18 +302,18 @@ struct DownloadedSongsView: View {
                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
             }
             ForEach(Array(songs.enumerated()), id: \.element.id) { i, song in
-                TrackRow(track: song) { player.play(songs, startAt: i, source: "Téléchargés", sourceId: "downloaded") }
+                TrackRow(track: song) { player.play(songs, startAt: i, source: "Downloaded", sourceId: "downloaded") }
                     .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 12))
                     .swipeActions {
                         Button(role: .destructive) { store.remove([song]) } label: {
-                            Label("Retirer", systemImage: "trash")
+                            Label("Remove", systemImage: "trash")
                         }
                     }
             }
             if !store.downloading.isEmpty {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("\(store.downloading.count) en cours de téléchargement…")
+                    Text("Downloading \(store.downloading.count)…")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -324,19 +324,19 @@ struct DownloadedSongsView: View {
         .overlay {
             if songs.isEmpty && store.downloading.isEmpty {
                 if filter.isEmpty {
-                    ContentUnavailableView("Téléchargés", systemImage: "arrow.down.circle",
-                                           description: Text("Télécharge un son, un album ou une playlist depuis son menu « … ». Tes favoris les plus écoutés arrivent ici tout seuls."))
+                    ContentUnavailableView("Downloaded", systemImage: "arrow.down.circle",
+                                           description: Text("Download a song, an album or a playlist from its “…” menu. Your most played favorites show up here on their own."))
                 } else {
                     ContentUnavailableView.search(text: filter)
                 }
             }
         }
-        .navigationTitle("Téléchargés")
-        .searchable(text: $filter, prompt: "Rechercher")
+        .navigationTitle("Downloaded")
+        .searchable(text: $filter, prompt: "Search")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Réglages des téléchargements")
+                    .accessibilityLabel("Download Settings")
             }
         }
         .sheet(isPresented: $showSettings) { DownloadsSettingsView().appEnvironment() }
@@ -346,13 +346,13 @@ struct DownloadedSongsView: View {
 
 struct SongListView: View {
     let title: String
-    var emptyMessage = "Aucun morceau."
+    var emptyMessage = "No songs."
 
     @Environment(PlayerManager.self) private var player
     @State private var pager: PagedItems
     @State private var filter = ""
 
-    init(title: String, query: [String: String], cacheable: Bool = true, emptyMessage: String = "Aucun morceau.") {
+    init(title: String, query: [String: String], cacheable: Bool = true, emptyMessage: String = "No songs.") {
         self.title = title
         self.emptyMessage = emptyMessage
         _pager = State(initialValue: PagedItems(query: query, cacheable: cacheable))
@@ -396,7 +396,7 @@ struct SongListView: View {
             }
         }
         .navigationTitle(title)
-        .searchable(text: $filter, prompt: "Rechercher")
+        .searchable(text: $filter, prompt: "Search")
         .task(id: "\(LibrarySync.shared.version)|\(filter)") {
             if pager.search != filter {
                 try? await Task.sleep(for: .milliseconds(300))

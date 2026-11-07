@@ -1,49 +1,53 @@
-# Musique (Mac) → « en lecture » et choix d'appareil pour une autre app (ex. Atoll)
+# Sonalex (Mac) → "now playing" and device choice for another app (e.g. Atoll)
 
-**Musique** tourne sur l'iPhone et sur le Mac (Mac Catalyst). Grâce à **Musique Connect**, un seul
-appareil joue le son à la fois ; les autres reflètent ce qu'il joue et le pilotent. Sur le Mac,
-l'app publie donc **toujours ce qui joue sur n'importe lequel des appareils**, et accepte des
-commandes qu'elle exécute ou transmet à l'appareil qui joue.
+**Sonalex** runs on the iPhone and on the Mac (Mac Catalyst). With **Sonalex Connect**, only one
+device plays at a time; the others mirror what it plays and control it. So on the Mac, the app
+always publishes **what's playing on any of the devices**, and accepts commands it runs or
+forwards to the playing device.
 
-Une app comme **Atoll** n'a besoin de parler qu'à l'app Mac :
+An app like **Atoll** only needs to talk to the Mac app:
 
-| Atoll veut… | Comment |
+| Atoll wants to… | How |
 |---|---|
-| savoir ce qui joue (titre, pochette, position), même sur l'iPhone | lire `NowPlaying.json` à chaque notification Darwin (§2) |
-| lecture / pause / suivant / précédent, même si c'est l'iPhone qui joue | ouvrir `sonalex://…` (§3) |
-| afficher les appareils (Mac, iPhone) et lequel joue | bloc `connect` du JSON (§2) |
-| faire jouer sur le Mac ou sur l'iPhone | `sonalex://transfer?device=<id>` (§3) |
+| know what's playing (title, artwork, position), even on the iPhone | read `NowPlaying.json` on each Darwin notification (§2) |
+| play / pause / next / previous, even when the iPhone plays | open `sonalex://…` (§3) |
+| show the devices (Mac, iPhone) and which one plays | the `connect` block of the JSON (§2) |
+| play on the Mac or on the iPhone | `sonalex://transfer?device=<id>` (§3) |
 
 ---
 
-## 1. Le « En lecture » standard de macOS
+## 1. macOS's standard "Now Playing"
 
-L'app Mac renseigne `MPNowPlayingInfoCenter` (titre, artiste, album, pochette, durée, position,
-vitesse) et `playbackState`, y compris quand c'est l'iPhone qui joue. Elle répond aussi aux
-commandes système : touches média, Centre de contrôle, `MRMediaRemoteSendCommand`. Ces commandes
-sont transmises à l'appareil qui joue.
+The Mac app fills in `MPNowPlayingInfoCenter` (title, artist, album, artwork, duration, position,
+rate) and `playbackState`, including when the iPhone plays. It also answers system commands:
+media keys, Control Center, `MRMediaRemoteSendCommand`. These commands are forwarded to the playing
+device.
 
-Une app qui lit le Now Playing système via MediaRemote (depuis macOS 15.4, par un adaptateur comme
-[`mediaremote-adapter`](https://github.com/ungive/mediaremote-adapter)) voit donc Musique. Mais ce
-canal ne permet **pas** de choisir l'appareil : pour ça, il faut le §2 et le §3.
+An app reading the system Now Playing through MediaRemote (since macOS 15.4, through an adapter
+like [`mediaremote-adapter`](https://github.com/ungive/mediaremote-adapter)) therefore sees Sonalex.
+But that channel **can't** choose the device: that's what §2 and §3 are for.
 
-## 2. `NowPlaying.json` + notification Darwin
+## 2. `NowPlaying.json` + Darwin notification
 
-À chaque changement (morceau, lecture/pause, saut, appareil qui joue, appareil connecté ou
-déconnecté) et toutes les ~5 s pendant la lecture, l'app Mac réécrit **atomiquement** :
+On every change (song, play/pause, seek, playing device, device connected or disconnected) and
+every ~5 s while playing, the Mac app rewrites, **atomically**:
 
 ```
 ~/Library/Application Support/Musique/NowPlaying.json
 ```
 
-Juste après, elle poste la **notification Darwin** `com.alexgarin.musique.nowplaying`.
+(The folder kept the app's former name, so existing integrations keep working. In the App Store
+version, sandboxed, it's inside the app's container:
+`~/Library/Containers/com.alexgarin.sonalex/Data/Library/Application Support/Musique/`.)
+
+Right after, it posts the **Darwin notification** `com.alexgarin.musique.nowplaying`.
 
 ```json
 {
   "title": "TORE UP",
   "artist": "Don Toliver",
   "album": "HARDSTONE PSYCHO",
-  "artworkURL": "https://jellyfin.exemple.fr/Items/fc41e7…/Images/Primary?fillWidth=600&fillHeight=600&quality=90&tag=…",
+  "artworkURL": "https://jellyfin.example.com/Items/fc41e7…/Images/Primary?fillWidth=600&fillHeight=600&quality=90&tag=…",
   "duration": 127.0,
   "elapsed": 42.3,
   "isPlaying": true,
@@ -57,79 +61,77 @@ Juste après, elle poste la **notification Darwin** `com.alexgarin.musique.nowpl
     "playingOn": "A93B…-IPHONE",
     "isRemote": true,
     "devices": [
-      { "id": "6F1C…-MAC",    "name": "MacBook Air"        , "kind": "mac",   "isThisDevice": true,  "isPlaying": false },
-      { "id": "A93B…-IPHONE", "name": "iPhone",              "kind": "phone", "isThisDevice": false, "isPlaying": true }
+      { "id": "6F1C…-MAC",    "name": "MacBook Air", "kind": "mac",   "isThisDevice": true,  "isPlaying": false },
+      { "id": "A93B…-IPHONE", "name": "iPhone",      "kind": "phone", "isThisDevice": false, "isPlaying": true }
     ]
   }
 }
 ```
 
-| Champ | Description |
+| Field | Description |
 |---|---|
-| `title`, `artist`, `album` | Ce qui joue, sur ce Mac **ou sur l'appareil qui joue**. Absents si rien n'est chargé. |
-| `artworkURL` | JPEG (Jellyfin ou CDN Spotify), téléchargeable sans authentification. |
-| `duration`, `elapsed` | En secondes. Position réelle = `elapsed + (now - updatedAt)` si `isPlaying`. |
-| `isPlaying` | Lecture voulue (ici ou sur l'appareil qui joue) : reste `true` pendant un chargement ou un changement de sortie audio, `false` seulement après une vraie pause, la fin de la file ou une erreur. |
-| `source` | `"library"` (Jellyfin) ou `"online"` (titre en ligne streamé par le Pi). |
-| `id` | Identifiant du morceau ; il change à chaque nouveau titre. |
-| `connect.available` | L'app Mac est reliée au Pi. Si `false`, la liste d'appareils est vide. |
-| `connect.thisDevice` | Identifiant du Mac lui-même. |
-| `connect.playingOn` | Identifiant de l'appareil qui joue. Vide si rien ne joue nulle part. |
-| `connect.isRemote` | `true` si un **autre** appareil que le Mac joue. |
-| `connect.devices` | Appareils connectés : `id`, `name` (ex. « iPhone de Léa », modifiable dans l'app : profil → Nom de cet appareil), `kind` (`mac`, `phone`, `tablet`), `volume` (0…1, volume de lecture de l'app sur cet appareil), `isThisDevice`, `isPlaying`. |
+| `title`, `artist`, `album` | What's playing, on this Mac **or on the playing device**. Missing if nothing is loaded. |
+| `artworkURL` | JPEG (Jellyfin or an online catalog's CDN), downloadable without authentication. |
+| `duration`, `elapsed` | In seconds. Real position = `elapsed + (now - updatedAt)` if `isPlaying`. |
+| `isPlaying` | Playback wanted (here or on the playing device): stays `true` while loading or changing the audio output, `false` only after a real pause, the end of the queue or an error. |
+| `source` | `"library"` (Jellyfin) or `"online"` (a song of the server's online catalog). |
+| `id` | The song's id; it changes with every new song. |
+| `connect.available` | The Mac app is connected to the Sonalex server. If `false`, the device list is empty. |
+| `connect.thisDevice` | The Mac's own id. |
+| `connect.playingOn` | The playing device's id. Empty if nothing plays anywhere. |
+| `connect.isRemote` | `true` if **another** device than the Mac plays. |
+| `connect.devices` | Connected devices: `id`, `name` (e.g. "Emma's iPhone", editable in the app: profile → Name of This Device), `kind` (`mac`, `phone`, `tablet`), `volume` (0…1, the app's playback volume on that device), `isThisDevice`, `isPlaying`. |
 
-Si `updatedAt` a plus de 10 s alors que `isPlaying` vaut `true`, l'app Mac est fermée : il n'y a
-plus de source Musique.
+If `updatedAt` is more than 10 s old while `isPlaying` is `true`, the Mac app is closed: there's no
+Sonalex source anymore.
 
-## 3. Commandes : `sonalex://`
+## 3. Commands: `sonalex://`
 
-`musique://…` (le nom d'avant) marche toujours. Le dossier `~/Library/Application Support/Musique/`
-n'a pas changé de nom ; dans la version App Store (bac à sable), il est dans le conteneur de l'app :
-`~/Library/Containers/com.alexgarin.sonalex/Data/Library/Application Support/Musique/`.
+`musique://…` (the former name) still works.
 
-| URL | Effet |
+| URL | Effect |
 |---|---|
-| `sonalex://playpause` | lecture / pause (sur l'appareil qui joue) |
-| `sonalex://play`, `sonalex://pause` | lecture, pause |
-| `sonalex://next`, `sonalex://previous` | morceau suivant / précédent |
-| `sonalex://open` | affiche l'écran « En lecture » de l'app Mac |
-| `sonalex://transfer?device=<id>` | fait jouer sur l'appareil `<id>`, pris dans `connect.devices` |
-| `sonalex://volume?level=0.42` | volume de lecture (0…1) de l'appareil qui joue, transmis s'il s'agit d'un autre ; conservé lors d'un transfert |
-| `sonalex://transfer?device=this` | fait jouer sur ce Mac |
-| `sonalex://transfer?kind=phone` | fait jouer sur l'iPhone (le premier appareil `phone`) ; `kind=mac` pour le Mac |
+| `sonalex://playpause` | play / pause (on the playing device) |
+| `sonalex://play`, `sonalex://pause` | play, pause |
+| `sonalex://next`, `sonalex://previous` | next / previous song |
+| `sonalex://open` | shows the Mac app's Now Playing screen |
+| `sonalex://transfer?device=<id>` | plays on device `<id>`, taken from `connect.devices` |
+| `sonalex://volume?level=0.42` | playback volume (0…1) of the playing device, forwarded if it's another one; kept on a transfer |
+| `sonalex://transfer?device=this` | plays on this Mac |
+| `sonalex://transfer?kind=phone` | plays on the iPhone (the first `phone` device); `kind=mac` for the Mac |
 
-Le transfert reprend **au même endroit du même morceau**, avec la même file d'attente. L'appareil
-qui jouait s'arrête. Le JSON est réécrit dès que le Pi confirme (quelques dixièmes de seconde).
+A transfer resumes **at the same point of the same song**, with the same queue. The device that
+was playing stops. The JSON is rewritten as soon as the server confirms (a few tenths of a second).
 
-Ouvre ces URL **sans mettre Musique au premier plan** :
+Open these URLs **without bringing Sonalex to the front**:
 
 ```swift
-func musique(_ command: String) {
+func sonalex(_ command: String) {
     let config = NSWorkspace.OpenConfiguration()
     config.activates = false
     NSWorkspace.shared.open(URL(string: "sonalex://\(command)")!, configuration: config)
 }
-musique("next")
-musique("transfer?kind=phone")
+sonalex("next")
+sonalex("transfer?kind=phone")
 ```
 
-### 3 bis. Commandes sans URL (recommandé pour Atoll)
+### 3b. Commands without URLs (recommended for Atoll)
 
-Les URL `sonalex://` dépendent de macOS, qui doit savoir quelle app les ouvre. Avec une app de
-développement, il l'oublie parfois (« There is no application set to open the URL »). Le canal
-suivant passe directement par l'app Mac, quand elle est ouverte :
+`sonalex://` URLs depend on macOS knowing which app opens them. With a development build it
+sometimes forgets ("There is no application set to open the URL"). This channel goes straight to
+the Mac app, when it's open:
 
-1. Écrire `~/Library/Application Support/Musique/Command.json` :
+1. Write `~/Library/Application Support/Musique/Command.json`:
    ```json
-   { "id": "<identifiant unique, ex. UUID>", "command": "pause" }
+   { "id": "<unique id, e.g. a UUID>", "command": "pause" }
    ```
-   `command` accepte `play`, `pause`, `playpause`, `next`, `previous`, `open`,
-   `volume` (avec `"level": 0.42`) et `transfer` (avec `"device": "<id>"` ou `"this"`, ou
-   `"kind": "phone"`). L'`id` doit changer à chaque commande, sinon elle est ignorée.
-2. Poster la notification Darwin `com.alexgarin.musique.command`.
+   `command` accepts `play`, `pause`, `playpause`, `next`, `previous`, `open`,
+   `volume` (with `"level": 0.42`) and `transfer` (with `"device": "<id>"` or `"this"`, or
+   `"kind": "phone"`). The `id` must change with every command, otherwise it's ignored.
+2. Post the Darwin notification `com.alexgarin.musique.command`.
 
 ```swift
-func musiqueCommand(_ command: String, extra: [String: Any] = [:]) {
+func sonalexCommand(_ command: String, extra: [String: Any] = [:]) {
     let url = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/Musique/Command.json")
     var body = extra
@@ -141,28 +143,28 @@ func musiqueCommand(_ command: String, extra: [String: Any] = [:]) {
             CFNotificationName("com.alexgarin.musique.command" as CFString), nil, nil, true)
     }
 }
-musiqueCommand("pause")
-musiqueCommand("volume", extra: ["level": 0.42])
-musiqueCommand("transfer", extra: ["kind": "phone"])
+sonalexCommand("pause")
+sonalexCommand("volume", extra: ["level": 0.42])
+sonalexCommand("transfer", extra: ["kind": "phone"])
 ```
 
-Conseil : utiliser ce canal quand l'app Mac tourne (le `updatedAt` du JSON est récent), et les URL
-`sonalex://` seulement pour lancer l'app quand elle est fermée.
+Tip: use this channel while the Mac app runs (the JSON's `updatedAt` is recent), and `sonalex://`
+URLs only to launch the app when it's closed.
 
-## 4. Lecture côté Atoll (Swift)
+## 4. Reading it in Atoll (Swift)
 
 ```swift
 import AppKit
 
-struct MusiqueDevice: Decodable, Identifiable {
+struct SonalexDevice: Decodable, Identifiable {
     let id: String; let name: String; let kind: String
     let isThisDevice: Bool; let isPlaying: Bool
 }
 
-struct MusiqueNowPlaying: Decodable {
+struct SonalexNowPlaying: Decodable {
     struct Connect: Decodable {
         let available: Bool; let thisDevice: String; let playingOn: String
-        let isRemote: Bool; let devices: [MusiqueDevice]
+        let isRemote: Bool; let devices: [SonalexDevice]
     }
     let title: String?; let artist: String?; let album: String?
     let artworkURL: String?; let duration: Double; let elapsed: Double
@@ -175,10 +177,10 @@ struct MusiqueNowPlaying: Decodable {
     }
 }
 
-final class MusiqueSource {
+final class SonalexSource {
     private let url = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/Musique/NowPlaying.json")
-    var onChange: ((MusiqueNowPlaying) -> Void)?
+    var onChange: ((SonalexNowPlaying) -> Void)?
 
     func start() {
         CFNotificationCenterAddObserver(
@@ -186,7 +188,7 @@ final class MusiqueSource {
             Unmanaged.passUnretained(self).toOpaque(),
             { _, observer, _, _, _ in
                 guard let observer else { return }
-                let me = Unmanaged<MusiqueSource>.fromOpaque(observer).takeUnretainedValue()
+                let me = Unmanaged<SonalexSource>.fromOpaque(observer).takeUnretainedValue()
                 DispatchQueue.main.async { me.reload() }
             },
             "com.alexgarin.musique.nowplaying" as CFString, nil, .deliverImmediately)
@@ -195,7 +197,7 @@ final class MusiqueSource {
 
     func reload() {
         guard let data = try? Data(contentsOf: url),
-              let info = try? JSONDecoder().decode(MusiqueNowPlaying.self, from: data) else { return }
+              let info = try? JSONDecoder().decode(SonalexNowPlaying.self, from: data) else { return }
         onChange?(info)
     }
 
@@ -205,41 +207,38 @@ final class MusiqueSource {
         NSWorkspace.shared.open(URL(string: "sonalex://\(command)")!, configuration: config)
     }
 
-    func play(on device: MusiqueDevice) { send("transfer?device=\(device.id)") }
+    func play(on device: SonalexDevice) { send("transfer?device=\(device.id)") }
 }
 ```
 
-## 5. Le bouton « appareil » dans Atoll
+## 5. The "device" button in Atoll
 
-- Ne l'affiche que si `connect.available` vaut `true` et que `connect.devices` contient au moins
-  2 appareils.
-- **Icône** (SF Symbols) selon l'appareil qui joue (`isPlaying == true`) : `laptopcomputer` pour
-  `mac`, `iphone` pour `phone`, `ipad` pour `tablet`. Mets-la en couleur d'accent si
-  `connect.isRemote` (le son sort de l'iPhone, pas du Mac).
-- **Au clic**, un menu liste `connect.devices` : nom (« Ce Mac » si `isThisDevice`), coche sur
-  celui qui joue. Choisir une ligne envoie `sonalex://transfer?device=<id>`.
-- **Raccourci** possible : un simple bascule Mac ↔ iPhone qui envoie `transfer?kind=phone` si le
-  Mac joue, `transfer?device=this` sinon.
+- Only show it if `connect.available` is `true` and `connect.devices` holds at least 2 devices.
+- **Icon** (SF Symbols) by playing device (`isPlaying == true`): `laptopcomputer` for `mac`,
+  `iphone` for `phone`, `ipad` for `tablet`. Use the accent color if `connect.isRemote` (the sound
+  comes out of the iPhone, not the Mac).
+- **On click**, a menu lists `connect.devices`: name ("This Mac" if `isThisDevice`), a check mark on
+  the one playing. Picking one sends `sonalex://transfer?device=<id>`.
+- **Shortcut**: a simple Mac ↔ iPhone toggle that sends `transfer?kind=phone` if the Mac plays,
+  `transfer?device=this` otherwise.
 
 ---
 
-## Consigne à donner à une session Claude sur le Mac (pour Atoll)
+## Instructions to give a Claude session on the Mac (for Atoll)
 
-> Atoll est une app open source « Dynamic Island » pour Mac. Son contrôleur média gère Spotify.
-> Ajoute une source **Musique** (mon lecteur Jellyfin, synchronisé entre mon Mac et mon iPhone)
-> en suivant `docs/now-playing-mac.md` du dépôt hosted-spotify :
-> 1. Lire `~/Library/Application Support/Musique/NowPlaying.json` au démarrage et à chaque
->    notification Darwin `com.alexgarin.musique.nowplaying`. Interpoler la position avec
->    `elapsed + (maintenant - updatedAt)` pendant la lecture.
-> 2. Afficher le titre, l'artiste, la pochette (`artworkURL`) et la progression comme pour
->    Spotify, **même quand le son sort de l'iPhone** (`connect.isRemote`).
-> 3. Envoyer les commandes par `Command.json` + la notification Darwin
->    `com.alexgarin.musique.command` (§3 bis) quand l'app Mac tourne ; les URL `sonalex://` seulement
->    pour la lancer si elle est fermée.
-> 4. Ajouter un **bouton appareil** (§5) : un menu des `connect.devices` avec une coche sur celui
->    qui joue ; un choix envoie `sonalex://transfer?device=<id>`.
-> 5. Donner la priorité à Musique quand `isPlaying` vaut `true` ; sinon revenir à la source
->    précédente (Spotify). Considérer la source absente si `updatedAt` a plus de 10 s pendant la
->    lecture.
-> Respecte l'architecture existante d'Atoll (même protocole et même interface que le contrôleur
-> Spotify).
+> Atoll is an open-source "Dynamic Island" app for the Mac. Its media controller handles Spotify.
+> Add a **Sonalex** source (a Jellyfin music player, synced between my Mac and my iPhone)
+> following `docs/now-playing-mac.md` of the sonalex repository:
+> 1. Read `~/Library/Application Support/Musique/NowPlaying.json` at launch and on every Darwin
+>    notification `com.alexgarin.musique.nowplaying`. Interpolate the position with
+>    `elapsed + (now - updatedAt)` while playing.
+> 2. Show the title, artist, artwork (`artworkURL`) and progress like for Spotify, **even when the
+>    sound comes out of the iPhone** (`connect.isRemote`).
+> 3. Send commands through `Command.json` + the Darwin notification
+>    `com.alexgarin.musique.command` (§3b) while the Mac app runs; `sonalex://` URLs only to launch
+>    it when it's closed.
+> 4. Add a **device button** (§5): a menu of `connect.devices` with a check mark on the one playing;
+>    a choice sends `sonalex://transfer?device=<id>`.
+> 5. Give Sonalex priority when `isPlaying` is `true`; otherwise go back to the previous source
+>    (Spotify). Treat the source as gone if `updatedAt` is more than 10 s old while playing.
+> Follow Atoll's existing architecture (same protocol and same interface as the Spotify controller).

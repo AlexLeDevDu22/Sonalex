@@ -88,7 +88,7 @@ class Streamer:
         job = self.job(key)
         job.finished.wait(timeout)
         if not job.done:
-            raise RuntimeError(job.error or "Téléchargement impossible")
+            raise RuntimeError(job.error or "Download failed")
         return job
 
     async def serve(self, key: str, range_header: str | None, head: bool = False) -> Response:
@@ -99,7 +99,7 @@ class Streamer:
                 break
             await asyncio.sleep(0.05)
         if job.size is None:
-            raise HTTPException(502, job.error or "Lecture impossible")
+            raise HTTPException(502, job.error or "Can’t play this song")
 
         size = job.size
         byte_range = parse_range(range_header, size)
@@ -164,7 +164,7 @@ class Streamer:
             job.state = "done"
         except Exception as e:
             print(f"[streamer] {job.key} failed:", e)
-            job.error = "Ce titre est introuvable en ligne." if isinstance(e, LookupError) else "Lecture impossible."
+            job.error = "This song can’t be found online." if isinstance(e, LookupError) else "Can’t play this song."
             job.state = "failed"
         finally:
             job.finished.set()

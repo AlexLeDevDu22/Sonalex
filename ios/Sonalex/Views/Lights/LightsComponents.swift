@@ -223,9 +223,9 @@ struct ConnectionPill: View {
     var body: some View {
         let (color, text): (Color, String) = switch ambi.connection {
         case .online: (.green, ambi.macName)
-        case .reconnecting: (.orange, "Reconnexion…")
-        case .searching: (.orange, "Recherche…")
-        case .offline: (.gray, "Hors ligne")
+        case .reconnecting: (.orange, "Reconnecting…")
+        case .searching: (.orange, "Searching…")
+        case .offline: (.gray, "Offline")
         }
         Button { ambi.retry() } label: {
             HStack(spacing: 6) {

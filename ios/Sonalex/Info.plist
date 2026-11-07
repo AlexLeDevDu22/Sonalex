@@ -48,7 +48,7 @@
 		<string>_ambilight._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Sonalex se connecte à ton serveur Jellyfin sur ton réseau, et peut y trouver des lumières Ambilight à animer avec la musique.</string>
+	<string>Sonalex connects to your Jellyfin server on your network, and can find Ambilight lights there to sync with the music.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -52,8 +52,8 @@ def refresh_spotify_token(force: bool = False):
             return chosic_data["access_token"]
 
         if not chosic_data.get("playlist_analyzer_refresh_token"):
-            raise RuntimeError("Pas de jeton de compte Spotify : backend/chosic_data.json manquant "
-                               "(voir backend/README.md, synchro Spotify)")
+            raise RuntimeError("No Spotify account token: backend/chosic_data.json is missing "
+                               "(see backend/README.md, Spotify sync)")
         url = "https://www.chosic.com/api/tools/refresh-user-token/"
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:152.0) Gecko/20100101 Firefox/152.0",

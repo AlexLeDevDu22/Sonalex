@@ -80,19 +80,19 @@ struct MacRootView: View {
     private var sidebar: some View {
         List(selection: $selection) {
             SwiftUI.Section {
-                Label("Recherche", systemImage: "magnifyingglass").tag(Section.search)
-                Label("Accueil", systemImage: "house").tag(Section.home)
-                Label("Nouveautés", systemImage: "square.grid.2x2").tag(Section.new)
+                Label("Search", systemImage: "magnifyingglass").tag(Section.search)
+                Label("Home", systemImage: "house").tag(Section.home)
+                Label("New", systemImage: "square.grid.2x2").tag(Section.new)
                 if ambi.reachable {
-                    Label("Lumières", systemImage: "lightbulb.led").tag(Section.lights)
+                    Label("Lights", systemImage: "lightbulb.led").tag(Section.lights)
                 }
             }
-            SwiftUI.Section("Bibliothèque") {
-                Label("Artistes", systemImage: "music.microphone").tag(Section.artists)
+            SwiftUI.Section("Library") {
+                Label("Artists", systemImage: "music.microphone").tag(Section.artists)
                 Label("Albums", systemImage: "square.stack").tag(Section.albums)
-                Label("Morceaux", systemImage: "music.note").tag(Section.songs)
-                Label("Favoris", systemImage: "star").tag(Section.favorites)
-                Label("Téléchargés", systemImage: "arrow.down.circle").tag(Section.downloaded)
+                Label("Songs", systemImage: "music.note").tag(Section.songs)
+                Label("Favorites", systemImage: "star").tag(Section.favorites)
+                Label("Downloaded", systemImage: "arrow.down.circle").tag(Section.downloaded)
                 Label("Genres", systemImage: "guitars").tag(Section.genres)
             }
             if !playlists.isEmpty {
@@ -260,7 +260,7 @@ struct MacNowPlayingLCD: View {
         .onTapGesture { if track != nil { player.showNowPlaying = true } }
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.2), value: hovering)
-        .help(track != nil ? "Afficher les paroles en grand" : "")
+        .help(track != nil ? "Show lyrics full screen" : "")
         .task(id: track?.id) {
             let p = await ArtworkPalette.load(JellyfinClient.shared.artURL(track, points: 100))
             withAnimation(.easeInOut(duration: 0.8)) { palette = p }
@@ -415,7 +415,7 @@ private struct LCDActions: View {
                     .contentTransition(.symbolEffect(.replace))
                     .symbolEffect(.bounce, value: fav)
             }
-            .help(fav ? "Retirer des favoris" : "Ajouter aux favoris")
+            .help(fav ? "Remove from Favorites" : "Add to Favorites")
 
             Button { download(here: here) } label: {
                 if busy {
@@ -427,7 +427,7 @@ private struct LCDActions: View {
                 }
             }
             .disabled(busy)
-            .help(here ? "Retirer de cet appareil" : "Télécharger sur cet appareil")
+            .help(here ? "Remove from This Device" : "Download to This Device")
         }
         .buttonStyle(LCDButtonStyle())
         .font(.system(size: 14, weight: .semibold))
@@ -438,7 +438,7 @@ private struct LCDActions: View {
         if here { store.remove([track]); return }
         guard let key = track.externalKey else { store.download([track]); return }
         // Online song: into the library first (Jellyfin serves the file), then on this device.
-        ToastCenter.shared.show("Ajout à ta bibliothèque…", systemImage: "arrow.down.circle")
+        ToastCenter.shared.show("Adding to your library…", systemImage: "arrow.down.circle")
         Task {
             do {
                 let saved = try await SonalexAPI.shared.save(key, favorite: false)
@@ -485,7 +485,7 @@ struct MacSidePanel: View {
             NowPlayingBackground(palette: palette)
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
-                    Text(panel == .lyrics ? "Paroles" : "À suivre")
+                    Text(panel == .lyrics ? "Lyrics" : "Up Next")
                         .font(.headline)
                     Spacer()
                     if panel == .lyrics {
@@ -495,7 +495,7 @@ struct MacSidePanel: View {
                                 .frame(width: 30, height: 30)
                                 .background(.white.opacity(0.15), in: Circle())
                         }
-                        .help("Paroles en grand")
+                        .help("Full-screen lyrics")
                         .disabled(player.current == nil)
                     }
                     Button { withAnimation(.easeInOut(duration: 0.25)) { panel = nil } } label: {
@@ -504,7 +504,7 @@ struct MacSidePanel: View {
                             .background(.white.opacity(0.15), in: Circle())
                     }
                     .keyboardShortcut(.cancelAction)
-                    .help("Fermer")
+                    .help("Close")
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 13, weight: .bold))
@@ -516,7 +516,7 @@ struct MacSidePanel: View {
                     if panel == .lyrics, let track = player.current {
                         LyricsView(track: track)
                     } else if panel == .lyrics {
-                        Text("Aucune lecture en cours")
+                        Text("Not Playing")
                             .foregroundStyle(.white.opacity(0.6))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
@@ -538,20 +538,20 @@ struct MacSidePanel: View {
 
 struct PlaybackCommands: Commands {
     var body: some Commands {
-        CommandMenu("Lecture") {
-            Button("Lecture / Pause") { PlayerManager.shared.togglePlayPause() }
+        CommandMenu("Playback") {
+            Button("Play / Pause") { PlayerManager.shared.togglePlayPause() }
                 .keyboardShortcut(.space, modifiers: [])
-            Button("Suivant") { PlayerManager.shared.next() }
+            Button("Next") { PlayerManager.shared.next() }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
-            Button("Précédent") { PlayerManager.shared.previous() }
+            Button("Previous") { PlayerManager.shared.previous() }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
             Divider()
-            Button("Aléatoire") { PlayerManager.shared.toggleShuffle() }
+            Button("Shuffle") { PlayerManager.shared.toggleShuffle() }
                 .keyboardShortcut("s", modifiers: .command)
-            Button("Répétition") { PlayerManager.shared.cycleRepeat() }
+            Button("Repeat") { PlayerManager.shared.cycleRepeat() }
                 .keyboardShortcut("r", modifiers: .command)
             Divider()
-            Button("En lecture") { PlayerManager.shared.showNowPlaying = true }
+            Button("Now Playing") { PlayerManager.shared.showNowPlaying = true }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
         }
     }

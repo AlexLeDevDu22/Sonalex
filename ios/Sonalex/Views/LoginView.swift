@@ -27,14 +27,14 @@ struct LoginView: View {
                 VStack(spacing: 8) {
                     Text(AppInfo.name)
                         .font(.largeTitle.bold())
-                    Text("Connecte-toi à ton serveur Jellyfin\npour retrouver toute ta musique.")
+                    Text("Sign in to your Jellyfin server\nto get all your music.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(spacing: 0) {
-                    field("Serveur", systemImage: "server.rack") {
+                    field("Server", systemImage: "server.rack") {
                         TextField("https://jellyfin.exemple.fr", text: $server)
                             .keyboardType(.URL)
                             .textContentType(.URL)
@@ -43,16 +43,16 @@ struct LoginView: View {
                             .onSubmit { focus = .user }
                     }
                     Divider().padding(.leading, 52)
-                    field("Utilisateur", systemImage: "person.fill") {
-                        TextField("Nom d’utilisateur", text: $username)
+                    field("User", systemImage: "person.fill") {
+                        TextField("Username", text: $username)
                             .textContentType(.username)
                             .focused($focus, equals: .user)
                             .submitLabel(.next)
                             .onSubmit { focus = .password }
                     }
                     Divider().padding(.leading, 52)
-                    field("Mot de passe", systemImage: "lock.fill") {
-                        SecureField("Mot de passe", text: $password)
+                    field("Password", systemImage: "lock.fill") {
+                        SecureField("Password", text: $password)
                             .textContentType(.password)
                             .focused($focus, equals: .password)
                             .submitLabel(.go)
@@ -76,7 +76,7 @@ struct LoginView: View {
                         if loading {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Se connecter").font(.headline)
+                            Text("Sign In").font(.headline)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -104,23 +104,23 @@ struct LoginView: View {
     /// What Sonalex needs, and where to find the rest.
     private var about: some View {
         VStack(spacing: 14) {
-            Label("Compatible avec tout serveur Jellyfin", systemImage: "checkmark.seal.fill")
+            Label("Works with any Jellyfin server", systemImage: "checkmark.seal.fill")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.appAccent)
-            Text("Sonalex lit la musique de ton propre serveur Jellyfin : rien n’est stocké chez nous. Le serveur Sonalex, optionnel et gratuit, ajoute les transitions Mix et la lecture d’un appareil à l’autre.")
+            Text("Sonalex plays the music of your own Jellyfin server: nothing is stored on ours. The free, optional Sonalex server adds Mix transitions and playback that moves between your devices.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             HStack(spacing: 18) {
                 Link(destination: AppInfo.repository) {
-                    Label("Projet sur GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                    Label("Project on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
                 }
                 Link(destination: AppInfo.jellyfin) {
-                    Label("Découvrir Jellyfin", systemImage: "server.rack")
+                    Label("Discover Jellyfin", systemImage: "server.rack")
                 }
             }
             .font(.footnote.weight(.semibold))
-            Link("Confidentialité", destination: AppInfo.privacyPolicy)
+            Link("Privacy", destination: AppInfo.privacyPolicy)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

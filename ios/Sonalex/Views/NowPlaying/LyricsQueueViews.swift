@@ -24,7 +24,7 @@ struct LyricsView: View {
                 VStack(spacing: 10) {
                     Image(systemName: "quote.bubble")
                         .font(.system(size: 40))
-                    Text("Paroles indisponibles")
+                    Text("Lyrics Unavailable")
                         .font(.title3.weight(.semibold))
                 }
                 .foregroundStyle(.white.opacity(0.5))
@@ -95,7 +95,7 @@ struct LyricsView: View {
     private func plain(_ lines: [LyricLine]) -> some View {
         ScrollView(showsIndicators: false) {
             // No timestamps for this song (LRCLIB only has the text): nothing to follow.
-            Label("Paroles non synchronisées", systemImage: "text.alignleft")
+            Label("Lyrics not synced", systemImage: "text.alignleft")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.5))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -126,7 +126,7 @@ struct QueueView: View {
                         .onTapGesture { player.jump(to: entry.id) }
                         .contextMenu {
                             Button(role: .destructive) { player.removeUpcoming(id: entry.id) } label: {
-                                Label("Retirer de la file", systemImage: "minus.circle")
+                                Label("Remove from Queue", systemImage: "minus.circle")
                             }
                         }
                         .listRowBackground(Color.clear)
@@ -138,14 +138,14 @@ struct QueueView: View {
                 if player.isLoadingRadio {
                     HStack(spacing: 10) {
                         ProgressView().tint(.white).controlSize(.small)
-                        Text("Lecture automatique : recherche de titres…")
+                        Text("Autoplay: finding songs…")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.6))
                     }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 10, leading: 28, bottom: 10, trailing: 20))
                 } else if player.upcoming.isEmpty {
-                    Text("Rien à suivre")
+                    Text("Nothing up next")
                         .foregroundStyle(.white.opacity(0.5))
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 20))
@@ -167,11 +167,11 @@ struct QueueView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("À suivre")
+                Text("Up Next")
                     .font(.headline)
                     .foregroundStyle(.white)
                 if let source = player.sourceName {
-                    Text("Lecture de \(source)")
+                    Text("Playing from \(source)")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.55))
                         .lineLimit(1)
@@ -190,13 +190,13 @@ struct QueueView: View {
             if ServerFeatures.shared.companion {
                 toggle(systemImage: "wand.and.stars", active: player.mixEnabled) {
                     player.mixEnabled.toggle()
-                    ToastCenter.shared.show(player.mixEnabled ? "Mix activé : transitions entre les sons"
-                                                              : "Mix désactivé", systemImage: "wand.and.stars")
+                    ToastCenter.shared.show(player.mixEnabled ? "Mix on: transitions between songs"
+                                                              : "Mix off", systemImage: "wand.and.stars")
                 }
             }
             Menu {
                 Button(role: .destructive) { player.clearUpcoming() } label: {
-                    Label("Effacer la file d’attente", systemImage: "trash")
+                    Label("Clear Queue", systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis")

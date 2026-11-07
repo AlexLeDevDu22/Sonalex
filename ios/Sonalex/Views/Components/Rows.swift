@@ -51,14 +51,14 @@ struct TrackRow: View {
                         Image(systemName: "arrow.down.circle.fill")
                             .font(.caption)
                             .foregroundStyle(Color.appAccent)
-                            .accessibilityLabel("Sur cet appareil")
+                            .accessibilityLabel("On This Device")
                     } else if OfflineStore.shared.downloading.contains(track.id) {
                         ProgressView().controlSize(.mini)
                     } else if showDownloaded && !track.isExternal {
                         Image(systemName: "arrow.down.circle")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel("Dans la bibliothèque")
+                            .accessibilityLabel("In Library")
                     }
                     if favorites.isFavorite(track) {
                         Image(systemName: "star.fill")
@@ -86,15 +86,15 @@ struct TrackRow: View {
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 player.playNext([track])
-                ToastCenter.shared.show("Lu ensuite", systemImage: "text.line.first.and.arrowtriangle.forward")
-            } label: { Label("Lire ensuite", systemImage: "text.line.first.and.arrowtriangle.forward") }
+                ToastCenter.shared.show("Playing Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
                 .tint(.indigo)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button {
                 player.addToQueue([track])
-                ToastCenter.shared.show("Ajouté à la file", systemImage: "text.line.last.and.arrowtriangle.forward")
-            } label: { Label("Lire en dernier", systemImage: "text.line.last.and.arrowtriangle.forward") }
+                ToastCenter.shared.show("Added to Queue", systemImage: "text.line.last.and.arrowtriangle.forward")
+            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
                 .tint(.orange)
         }
     }
@@ -234,7 +234,7 @@ extension Item {
         switch type {
         case ItemKind.album: return ["Album", albumArtistLine].filter { !$0.isEmpty }.joined(separator: " · ")
         case ItemKind.playlist: return childCount.map { "Playlist · " + Format.songCount($0) } ?? "Playlist"
-        case ItemKind.artist: return "Artiste"
+        case ItemKind.artist: return "Artist"
         default: return artistLine
         }
     }
@@ -263,6 +263,6 @@ struct MomentBadge: View {
         Image(systemName: "flame.fill")
             .font(.caption2)
             .foregroundStyle(LinearGradient(colors: [.orange, .pink], startPoint: .top, endPoint: .bottom))
-            .accessibilityLabel("Son du moment")
+            .accessibilityLabel("Song of the Moment")
     }
 }

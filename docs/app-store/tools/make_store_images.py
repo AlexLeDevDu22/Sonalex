@@ -118,7 +118,7 @@ def screenshots():
             caption = captions.get(device, captions.get("iphone", []))
             frame(raw, device, caption[i] if i < len(caption) else [], STORE / "screenshots" / device / raw.name)
     if not found:
-        print("Aucune capture dans docs/app-store/raw/{iphone,ipad,mac}/ : voir docs/app-store/README.md")
+        print("No screenshots in docs/app-store/raw/{iphone,ipad,mac}/: see docs/app-store/README.md")
 
 
 def banners():
@@ -133,13 +133,13 @@ def banners():
             canvas.paste(logo, (x, y), logo)
             tx = x + side + int(w * 0.05)
             draw.text((tx, h * 0.40), "Sonalex", font=font(int(h * 0.14)), fill="white", anchor="lm")
-            draw.text((tx, h * 0.56), "Ta musique Jellyfin, enfin belle.", font=font(int(h * 0.055), False),
+            draw.text((tx, h * 0.56), "Your Jellyfin music, beautifully played.", font=font(int(h * 0.055), False),
                       fill="white", anchor="lm")
         else:
             x, y = (w - side) // 2, int(h * 0.26)
             canvas.paste(logo, (x, y), logo)
             draw.text((w / 2, y + side + h * 0.07), "Sonalex", font=font(int(w * 0.16)), fill="white", anchor="mt")
-            text_block(draw, ["", "Ta musique Jellyfin, enfin belle."], w * 0.8, y + side + int(h * 0.17),
+            text_block(draw, ["", "Your Jellyfin music, beautifully played."], w * 0.8, y + side + int(h * 0.17),
                        [0, int(w * 0.06)])
         out = STORE / "banners" / name
         out.parent.mkdir(parents=True, exist_ok=True)

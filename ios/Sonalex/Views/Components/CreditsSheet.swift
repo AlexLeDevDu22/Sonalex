@@ -37,10 +37,10 @@ struct CreditsSheet: View {
                     if let url = credits.url.flatMap(URL.init(string:)) {
                         Section {
                             Button { openURL(url) } label: {
-                                Label("Voir sur Genius", systemImage: "arrow.up.right.square")
+                                Label("View on Genius", systemImage: "arrow.up.right.square")
                             }
                         } footer: {
-                            Text("Crédits fournis par Genius.")
+                            Text("Credits provided by Genius.")
                         }
                     }
                 }
@@ -49,12 +49,12 @@ struct CreditsSheet: View {
                 if credits == nil && !failed {
                     ProgressView()
                 } else if failed || credits?.found == false || credits?.sections.isEmpty == true {
-                    ContentUnavailableView("Pas de crédits", systemImage: "person.2.slash",
-                                           description: Text(failed ? "Le serveur ne répond pas pour le moment."
-                                                                    : "Aucun crédit trouvé pour ce morceau."))
+                    ContentUnavailableView("No Credits", systemImage: "person.2.slash",
+                                           description: Text(failed ? "The server isn’t responding right now."
+                                                                    : "No credits found for this song."))
                 }
             }
-            .navigationTitle("Crédits")
+            .navigationTitle("Credits")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("OK") { dismiss() } }

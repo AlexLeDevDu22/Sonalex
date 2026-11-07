@@ -1,20 +1,56 @@
 {
   "iphone": [
-    ["Toute ta musique Jellyfin", "Un lecteur pensé pour ta bibliothèque"],
-    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"],
-    ["Les paroles en direct", "Synchronisées, ligne par ligne"],
-    ["Ta bibliothèque, rangée", "Albums, artistes, playlists, favoris"],
-    ["Même sans réseau", "Télécharge tes sons sur l’appareil"],
-    ["D’un appareil à l’autre", "Lance sur le Mac, continue sur l’iPhone"]
+    [
+      "All your Jellyfin music",
+      "A player made for your library"
+    ],
+    [
+      "DJ transitions",
+      "Mix blends your songs on the beat"
+    ],
+    [
+      "Live lyrics",
+      "Synced, line by line"
+    ],
+    [
+      "Your library, organized",
+      "Albums, artists, playlists, favorites"
+    ],
+    [
+      "Even offline",
+      "Download your songs to your device"
+    ],
+    [
+      "From one device to another",
+      "Start on your Mac, keep going on your iPhone"
+    ]
   ],
   "ipad": [
-    ["Toute ta musique Jellyfin", "Un lecteur pensé pour ta bibliothèque"],
-    ["Les paroles en grand", "Synchronisées, ligne par ligne"],
-    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"]
+    [
+      "All your Jellyfin music",
+      "A player made for your library"
+    ],
+    [
+      "Big, live lyrics",
+      "Synced, line by line"
+    ],
+    [
+      "DJ transitions",
+      "Mix blends your songs on the beat"
+    ]
   ],
   "mac": [
-    ["Sonalex sur le Mac", "Barre latérale, raccourcis clavier, menu dans la barre des menus"],
-    ["Les paroles en grand", "Synchronisées, ligne par ligne"],
-    ["Des transitions de DJ", "Le Mix enchaîne tes sons sur le tempo"]
+    [
+      "Sonalex on the Mac",
+      "Sidebar, keyboard shortcuts, menu bar controls"
+    ],
+    [
+      "Big, live lyrics",
+      "Synced, line by line"
+    ],
+    [
+      "DJ transitions",
+      "Mix blends your songs on the beat"
+    ]
   ]
 }

@@ -43,7 +43,7 @@ struct AlbumView: View {
                     }
                 } header: {
                     if discs.count > 1 {
-                        Text("Disque \(disc)")
+                        Text("Disc \(disc)")
                             .font(.headline)
                             .foregroundStyle(.secondary)
                             .textCase(nil)
@@ -58,7 +58,7 @@ struct AlbumView: View {
             }
 
             if !more.isEmpty {
-                Shelf("Plus de \(current.albumArtistLine)") {
+                Shelf("More by \(current.albumArtistLine)") {
                     ForEach(more) { ItemCard(item: $0, width: 150, subtitle: $0.year.map(String.init) ?? "") }
                 }
                 .padding(.vertical, 20)

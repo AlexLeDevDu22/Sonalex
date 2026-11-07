@@ -616,12 +616,12 @@ final class PlayerManager {
         }
         stall = nil
         if index + 1 < queue.count || repeatMode == .all {
-            ToastCenter.shared.show("Ce son ne se lance pas : on passe au suivant", systemImage: "forward.fill")
+            ToastCenter.shared.show("This song won’t start: skipping to the next one", systemImage: "forward.fill")
             index = index + 1 < queue.count ? index + 1 : 0
             loadCurrent(autoplay: true)
             persist()
         } else {
-            ToastCenter.shared.show("Ce son ne se lance pas", systemImage: "exclamationmark.triangle.fill")
+            ToastCenter.shared.show("This song won’t start", systemImage: "exclamationmark.triangle.fill")
             mixEngine.stop()
             reportStoppedIfNeeded()
             player.pause()
@@ -696,7 +696,7 @@ final class PlayerManager {
                     localOnly = false
                 case .offline:
                     guard localCount > 0 else {
-                        ToastCenter.shared.show("Pas de connexion, et aucun de ces sons n’est téléchargé", systemImage: "wifi.slash")
+                        ToastCenter.shared.show("No connection, and none of these songs are downloaded", systemImage: "wifi.slash")
                         return
                     }
                     localOnly = true
@@ -746,8 +746,8 @@ final class PlayerManager {
             originalOrder = originalOrder?.filter { isPlayableOffline($0.track) }
             start = first.flatMap { f in entries.firstIndex(of: f) } ?? 0
             offlineStash = full
-            ToastCenter.shared.show(Connectivity.shared.isOffline ? "Pas de connexion : lecture des sons téléchargés"
-                                                                  : "Lecture des sons téléchargés uniquement",
+            ToastCenter.shared.show(Connectivity.shared.isOffline ? "No connection: playing downloaded songs"
+                                                                  : "Playing downloaded songs only",
                                     systemImage: "arrow.down.circle")
         }
         queue = entries
@@ -795,7 +795,7 @@ final class PlayerManager {
         originalOrder = originalOrder?.filter { !drop.contains($0.id) }
         refreshNextItem()
         persist()
-        ToastCenter.shared.show("Pas de connexion : la suite se limite aux sons téléchargés", systemImage: "wifi.slash")
+        ToastCenter.shared.show("No connection: up next is limited to downloaded songs", systemImage: "wifi.slash")
     }
 
     private func restoreFullQueue() {
@@ -811,7 +811,7 @@ final class PlayerManager {
         index = i
         refreshNextItem()
         persist()
-        ToastCenter.shared.show("Connexion retrouvée : toute la file est de retour", systemImage: "wifi")
+        ToastCenter.shared.show("Back online: the whole queue is back", systemImage: "wifi")
     }
 
     func toggleAutoplay() {
@@ -1105,7 +1105,7 @@ final class PlayerManager {
             wantsToPlay = false
             isPlaying = false
             isBuffering = false
-            ToastCenter.shared.show("Pas de connexion : plus de son téléchargé dans la file", systemImage: "wifi.slash")
+            ToastCenter.shared.show("No connection: no more downloaded songs in the queue", systemImage: "wifi.slash")
             return
         }
         userAdvanced = false
@@ -1272,7 +1272,7 @@ final class PlayerManager {
 
     private func handleFailure() {
         failureCount += 1
-        ToastCenter.shared.show("Lecture impossible", systemImage: "exclamationmark.triangle.fill")
+        ToastCenter.shared.show("Can’t play this song", systemImage: "exclamationmark.triangle.fill")
         guard failureCount < 3, queue.count > 1 else {
             wantsToPlay = false
             player.pause()
@@ -1317,7 +1317,7 @@ final class PlayerManager {
                 currentTime = 0
                 updateNowPlayingPlayback()
                 persist()
-                ToastCenter.shared.show("Fin de la lecture", systemImage: "stop.circle")
+                ToastCenter.shared.show("End of the queue", systemImage: "stop.circle")
             }
             return
         }
@@ -1364,7 +1364,7 @@ final class PlayerManager {
 
     private func beginLoadingTask() {
         guard loadingTask == .invalid else { return }
-        loadingTask = UIApplication.shared.beginBackgroundTask(withName: "Chargement du morceau") { [weak self] in
+        loadingTask = UIApplication.shared.beginBackgroundTask(withName: "Loading song") { [weak self] in
             MainActor.assumeIsolated { self?.endLoadingTask() }
         }
     }
@@ -1482,8 +1482,8 @@ final class PlayerManager {
             }
             return .success
         }
-        c.likeCommand.localizedTitle = "Favori"
-        c.likeCommand.localizedShortTitle = "Favori"
+        c.likeCommand.localizedTitle = "Favorite"
+        c.likeCommand.localizedShortTitle = "Favorite"
         c.likeCommand.addTarget { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let track = self?.current else { return }
@@ -1899,6 +1899,6 @@ extension PlayerManager {
         mixOutgoing = nil
         updateNowPlayingPlayback()
         persist()
-        ToastCenter.shared.show("Fin de la lecture", systemImage: "stop.circle")
+        ToastCenter.shared.show("End of the queue", systemImage: "stop.circle")
     }
 }

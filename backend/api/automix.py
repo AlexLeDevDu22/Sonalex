@@ -558,7 +558,7 @@ def segment(key: str, prev: str | None = None, nxt: str | None = None, start: fl
     prev's segment up to there). Without, X from `start`."""
     path_x, info_x = _info(key, wait=True)
     if not info_x:
-        return {"ok": False, "reason": "son pas encore disponible sur le serveur"}
+        return {"ok": False, "reason": "song not available on the server yet"}
     path_w, info_w = _info(prev, wait=False) if prev else (None, None)
     t_in = _plan(path_w, info_w, path_x, info_x) if info_w else None
     path_y, info_y = _info(nxt, wait=False) if nxt else (None, None)

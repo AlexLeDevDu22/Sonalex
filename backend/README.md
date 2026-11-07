@@ -1,122 +1,119 @@
-# Le serveur Sonalex
+# The Sonalex server
 
-Ce que l'app ajoute à Jellyfin, servi à l'adresse de Jellyfin sous `/sonalex/` (voir
-[`deploy/README.md`](../deploy/README.md) pour l'installation et le relais).
+What the app adds on top of Jellyfin, served at the Jellyfin address under `/sonalex/` (see
+[`deploy/README.md`](../deploy/README.md) for the install and the relay).
 
 ```
 backend/
-  config.py            réglages (lus dans .env, surchargés par config.ini)
-  api/                 le serveur (FastAPI, uvicorn) : python -m uvicorn api.server:app
-    server.py          les routes, l'authentification (le jeton Jellyfin de l'app)
-    automix.py         Mix : planification et rendu des transitions (ffmpeg)
-    mixinfo.py         Mix : analyse des sons (tempo, temps, tonalité, voix)
-    connect.py         Connect : appareils, appareil qui joue, commandes
-    streamer.py …      modules optionnels : catalogue en ligne (streamer, catalog, saver, radio,
-                       daily, credits, library) et synchro Spotify en direct (live_worker)
-  full_refreshing.py   synchro Spotify de la nuit (module Spotify)
-  sync.py, liked.py, playlists.py, spotify.py, downloading.py …   module Spotify
-  utils/               scripts d'entretien ponctuels (à lancer à la main)
+  config.py            settings (read from .env, overridden by config.ini)
+  api/                 the server (FastAPI, uvicorn): python -m uvicorn api.server:app
+    server.py          routes, authentication (the app's Jellyfin token)
+    automix.py         Mix: planning and rendering the transitions (ffmpeg)
+    mixinfo.py         Mix: song analysis (tempo, beats, key, voice)
+    connect.py         Connect: devices, the playing device, commands
+    streamer.py …      optional modules: online catalog (streamer, catalog, saver, radio,
+                       daily, credits, library) and live Spotify sync (live_worker)
+  full_refreshing.py   nightly Spotify sync (Spotify module)
+  sync.py, liked.py, playlists.py, spotify.py, downloading.py …   Spotify module
+  utils/               one-off maintenance scripts (run by hand)
 ```
 
-## Réglages
+## Settings
 
-Tout est dans `backend/.env` (modèle : [`.env.example`](.env.example)) :
+Everything is in `backend/.env` (template: [`.env.example`](.env.example)):
 
-| Variable | Rôle |
+| Variable | Role |
 |---|---|
-| `SONALEX_JELLYFIN_URL` | Jellyfin vu depuis cette machine (`http://127.0.0.1:8096`, ou `:8097` derrière le relais Caddy) |
-| `JELLYFIN_USER`, `JELLYFIN_PW` | un compte administrateur Jellyfin : le serveur s'en sert pour connaître le chemin des fichiers |
-| `JELLYFIN_USER_ID` | facultatif (trouvé à la connexion) |
-| `SONALEX_DATA_DIR` | données : `Musics/` (bibliothèque du module Spotify), `logs/`, `temp/`, caches (`mixinfo.json`…) |
-| `SONALEX_ONLINE` | `1` = catalogue en ligne |
-| `SONALEX_SPOTIFY_SYNC` | `1` = synchro Spotify |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | recherche Spotify du catalogue en ligne (tes propres clés, voir plus bas) |
-| `LASTFM_API_KEY` | recommandations (lecture automatique, stations), avec le catalogue en ligne |
-| `SONALEX_PROXY`, `SONALEX_*_PORT` | lus par `deploy/setup.sh` seulement |
+| `SONALEX_JELLYFIN_URL` | Jellyfin as this machine reaches it (`http://127.0.0.1:8096`, or `:8097` behind the Caddy relay) |
+| `JELLYFIN_USER`, `JELLYFIN_PW` | a Jellyfin administrator account: the server uses it to know where the files are |
+| `JELLYFIN_USER_ID` | optional (found when signing in) |
+| `SONALEX_DATA_DIR` | data: `Musics/` (the Spotify module's library), `logs/`, `temp/`, caches (`mixinfo.json`…) |
+| `SONALEX_ONLINE` | `1` = online catalog |
+| `SONALEX_SPOTIFY_SYNC` | `1` = Spotify sync |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | the online catalog's Spotify search (your own keys, see below) |
+| `LASTFM_API_KEY` | recommendations (autoplay, stations), with the online catalog |
+| `SONALEX_PROXY`, `SONALEX_*_PORT` | read by `deploy/setup.sh` only |
 
-L'app lit `GET /api/health` (`{"features": {"online": …, "spotifySync": …}}`) et n'affiche que ce
-que le serveur propose. Les routes d'un module désactivé répondent 404.
+The app reads `GET /api/health` (`{"features": {"online": …, "spotifySync": …}}`) and only shows
+what the server offers. The routes of a module that's off answer 404.
 
-## Toujours actif
+## Always on
 
-### Mix : transitions de DJ
+### Mix: DJ transitions
 
-L'app joue, sans aucun blanc, des *morceaux* que le serveur prépare : chaque son, avec la
-transition depuis le précédent à son début (`automix.py`). Pour chaque enchaînement A → B :
+The app plays, without any gap, *pieces* the server prepares: each song, with the transition from
+the previous one at its start (`automix.py`). For each transition A → B:
 
-1. **Analyse** (`mixinfo.py`, ~3 s par son, mise en cache) : tempo, grille des temps et des
-   mesures au début et à la fin, tonalité (roue de Camelot), volume, et **où est la voix**.
-   La voix vient des **paroles synchronisées** (`.lrc` à côté du fichier) ; sans elles, d'une
-   estimation prudente. Astuce : le plugin *LrcLib* de Jellyfin, avec l'enregistrement des paroles
-   dans les dossiers de la musique, donne des `.lrc` à presque toute une bibliothèque.
-2. **Deux règles**, quel que soit le style : B ne commence jamais avant la fin des paroles de A,
-   et A a disparu quand B se met à chanter.
-3. **Style** :
-   - *glide* (tempos à moins de 8 %, ou moitié / double) : le tempo de A glisse vers celui de B
-     (rubberband, hauteur conservée, jamais audible sur une voix), un temps fort de A tombe sur le
-     premier temps fort de B, les aigus se croisent, les basses s'échangent sur un temps fort. Le
-     serveur vérifie ensuite **sur le son rendu** que les deux rythmes tombent ensemble (et recale
-     B si une grille était décalée d'un demi-temps). Tonalités qui jurent : mélange plus court ;
-   - *echo* (tempos trop éloignés) : un filtre retire les basses de A une fois sa voix finie, A
-     s'arrête sur un temps fort et ses deux derniers temps résonnent en échos pendant que B entre ;
-   - *join* (pas de rythme exploitable) : A jusqu'à son dernier son, B juste après, sans les
-     silences des fichiers.
+1. **Analysis** (`mixinfo.py`, ~3 s per song, cached): tempo, beat and bar grids at the start and
+   the end, key (Camelot wheel), loudness, and **where the voice is**. The voice comes from the
+   **synced lyrics** (`.lrc` next to the file); without them, from a cautious estimate. Tip:
+   Jellyfin's *LrcLib* plugin, with lyrics saved into the media folders, gives `.lrc` files to
+   almost a whole library.
+2. **Two rules**, whatever the style: B never starts before A's lyrics are over, and A is gone when
+   B starts singing.
+3. **Style**:
+   - *glide* (tempos within 8 %, or half / double time): A's tempo slides to B's (rubberband, pitch
+     kept, never audible on a voice), one of A's downbeats lands on B's first downbeat, the highs
+     cross, the basslines swap on a downbeat. The server then checks **on the rendered audio**
+     that both rhythms fall together (and moves B if a grid was half a beat off). Clashing keys get
+     a shorter blend;
+   - *echo* (tempos too far apart): a filter takes A's bass away once its voice is over, A stops on
+     a downbeat and its last two beats ring out in echoes while B comes in;
+   - *join* (no usable rhythm): A to its last sound, B right after, without the files' silences.
 
-`GET /api/mix/segment?key=&prev=&next=&start=&until=` planifie et lance le rendu,
-`GET /api/mix/stream/{id}` sert le fichier (Apple Lossless). Un seul rendu à la fois.
+`GET /api/mix/segment?key=&prev=&next=&start=&until=` plans and starts the render,
+`GET /api/mix/stream/{id}` serves the file (Apple Lossless). One render at a time.
 
 ### Connect
 
-Chaque app garde un WebSocket (`/api/connect`). Par compte Jellyfin, le serveur sait quels
-appareils sont là et lequel joue : l'appareil qui joue diffuse son état aux autres, les autres
-lui envoient des commandes, et `transfer` fait passer la lecture d'un appareil à l'autre.
+Each app keeps a WebSocket open (`/api/connect`). For each Jellyfin account, the server knows which
+devices are there and which one plays: the playing device sends its state to the others, the
+others send it commands, and `transfer` moves playback from one device to another.
 
 ## Modules
 
-### Catalogue en ligne (`SONALEX_ONLINE=1`)
+### Online catalog (`SONALEX_ONLINE=1`)
 
-Recherche (Spotify, Deezer), pages d'artistes et d'albums, lecture des sons absents de la
-bibliothèque (l'audio est trouvé sur YouTube Music et téléchargé pendant la lecture), ajout à la
-bibliothèque (le son est rangé et tagué comme les autres), recommandations (Last.fm, Deezer),
-artiste du jour, crédits (Genius). **Vérifie que télécharger depuis YouTube est autorisé là où tu
-vis avant de l'activer** : c'est sous ta responsabilité.
+Search (Spotify, Deezer), artist and album pages, playback of songs that aren't in the library (the
+audio is found on YouTube Music and downloaded while it plays), adding to the library (the song is
+filed and tagged like the others), recommendations (Last.fm, Deezer), artist of the day, credits
+(Genius). **Check that downloading from YouTube is allowed where you live before turning it on**:
+it's your responsibility.
 
-**Clés** (aucune n'est fournie, chacun utilise les siennes) :
+**Keys** (none ship with the project, everyone uses their own):
 
-- **Spotify** (recherche, artistes, albums) : crée une app gratuite sur
-  [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) et mets son
-  *Client ID* et son *Client secret* dans `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (accès
-  officiel aux données publiques). Spotify limite ce que les nouvelles apps peuvent lire :
-  certaines playlists éditoriales peuvent manquer.
-- **Last.fm** (recommandations) : une clé gratuite sur [last.fm/api](https://www.last.fm/api/account/create).
-- Deezer, YouTube Music et LRCLIB (paroles) n'en demandent pas.
+- **Spotify** (search, artists, albums): create a free app on
+  [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and put its *Client
+  ID* and *Client secret* in `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (official access to
+  public data). Spotify limits what new apps can read: some editorial playlists may be missing.
+- **Last.fm** (recommendations): a free key at [last.fm/api](https://www.last.fm/api/account/create).
+- Deezer, YouTube Music and LRCLIB (lyrics) don't need one.
 
-> **Ce que j'utilise de mon côté :** pas de clés développeur Spotify, mais le jeton du compte que
-> donne le service [chosic.com](https://www.chosic.com/spotify-playlist-analyzer/) (son
-> *Playlist Analyzer*, une fois connecté à Spotify), dans `backend/chosic_data.json` (modèle :
-> [`chosic_data.json.example`](chosic_data.json.example)). Le catalogue s'en sert quand les clés
-> ci-dessus sont vides. Ce n'est pas une API officielle : ça peut s'arrêter du jour au lendemain,
-> et c'est à toi de voir si tu veux l'utiliser.
+> **What I use myself:** no Spotify developer keys, but the account token given by
+> [chosic.com](https://www.chosic.com/spotify-playlist-analyzer/) (its *Playlist Analyzer*, once
+> connected to Spotify), in `backend/chosic_data.json` (template:
+> [`chosic_data.json.example`](chosic_data.json.example)). The catalog uses it when the keys above
+> are empty. It isn't an official API: it can stop working any day, and it's up to you whether you
+> want to use it.
 
-### Synchro Spotify (`SONALEX_SPOTIFY_SYNC=1`) — expérimental
+### Spotify sync (`SONALEX_SPOTIFY_SYNC=1`) — experimental
 
-Jellyfin est maître : favoris et playlists modifiés dans Jellyfin (ou l'app) sont poussés vers
-Spotify en direct ; chaque nuit, `full_refreshing.py` fait l'inverse (nouveaux likes et
-playlists Spotify téléchargés), plus l'entretien (fichiers manquants, doublons, paroles). Il lui
-faut un jeton **de ton compte** Spotify (lire tes likes, modifier tes playlists : des clés
-développeur seules ne suffisent pas) : celui de chosic.com, comme décrit plus haut, dans
-`backend/chosic_data.json` avec `SPOTIFY_USER_ID` (ton identifiant Spotify). Avec
-`ONLY_LIKED = True` (`config.ini`), les sons qui ne sont plus likés ni dans une playlist suivie
-**sont supprimés** la nuit suivante.
+Jellyfin is the master: favorites and playlists changed in Jellyfin (or the app) are pushed to
+Spotify live; every night, `full_refreshing.py` does the opposite (new Spotify likes and playlists
+downloaded), plus maintenance (missing files, duplicates, lyrics). It needs a token **of your
+Spotify account** (to read your likes and edit your playlists: developer keys alone can't): the
+chosic.com one, as described above, in `backend/chosic_data.json`, with `SPOTIFY_USER_ID` (your
+Spotify user id). With `ONLY_LIKED = True` (`config.ini`), songs that are no longer liked nor in a
+followed playlist **are deleted** the following night.
 
 ```bash
-cd backend && .venv/bin/python spotify_refreshing.py --dry-run   # premier rattrapage, à blanc
+cd backend && .venv/bin/python spotify_refreshing.py --dry-run   # first catch-up, dry run
 ```
 
-## Développer
+## Developing
 
 ```bash
 cd backend && .venv/bin/python -m uvicorn api.server:app --port 18098 --reload
 ```
 
-Les journaux de l'app (événements du lecteur) arrivent dans `<données>/logs/player-debug.log`.
+The app's logs (player events) end up in `<data>/logs/player-debug.log`.

@@ -43,7 +43,7 @@ struct LightsView: View {
             .padding(.bottom, 30)
         }
         .scrollIndicators(.hidden)
-        .navigationTitle("Lumières")
+        .navigationTitle("Lights")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 ConnectionPill()
@@ -65,7 +65,7 @@ struct LightsView: View {
 
     @ViewBuilder private var controls: some View {
         if ambi.live?.sleep?.on == true {
-            Label("Ton Mac est en veille — les lumières reviendront toutes seules.", systemImage: "moon.zzz.fill")
+            Label("Your Mac is asleep — the lights will come back on their own.", systemImage: "moon.zzz.fill")
                 .font(.subheadline)
                 .foregroundStyle(.primary)
                 .padding(14)
@@ -103,7 +103,7 @@ struct LightsView: View {
             HStack(alignment: .center) {
                 MousePreview(preview: ambi.live?.mouse?.preview, running: ambi.live?.mouse?.running ?? false)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(on ? "Allumées" : "Éteintes").font(.headline)
+                    Text(on ? "On" : "Off").font(.headline)
                     Text(ambi.live?.leds?.status ?? ambi.macName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -138,9 +138,9 @@ struct LightsView: View {
         LightsCard {
             Toggle(isOn: Binding(get: { ambi.musicActive }, set: { ambi.setMusicMode($0) })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label("Lumières sur la musique", systemImage: "waveform")
+                    Label("Lights to the Music", systemImage: "waveform")
                         .font(.headline)
-                    Text("Les lumières suivent ce que joue l’app, aux couleurs de la pochette.")
+                    Text("The lights follow what the app plays, in the colors of the artwork.")
                         .font(.caption)
                         .foregroundStyle(.secondary.opacity(0.55))
                 }
@@ -152,7 +152,7 @@ struct LightsView: View {
                 HStack(spacing: 10) {
                     ArtworkView(item: track, points: 34, cornerRadius: 5).frame(width: 34, height: 34)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(ambi.isStreamingMusic ? "Synchronisé avec" : "En pause")
+                        Text(ambi.isStreamingMusic ? "Synced with" : "Paused")
                             .font(.caption2)
                             .foregroundStyle(.secondary.opacity(0.5))
                         Text("\(track.title) – \(track.artistLine)")
@@ -173,11 +173,11 @@ struct LightsView: View {
     @ViewBuilder private var stripSection: some View {
         let mode = ambi.config?.leds?.mode ?? "sound"
         LightsCard {
-            Text("Ruban").font(.title3.bold())
+            Text("Strip").font(.title3.bold())
 
             if let modes = ambi.catalog?.leds?.modes, !modes.isEmpty {
                 Picker("Mode", selection: Binding(get: { mode }, set: { ambi.setLedMode($0) })) {
-                    ForEach(modes) { m in Text(m.id == "sound" ? "Musique" : m.title).tag(m.id) }
+                    ForEach(modes) { m in Text(m.id == "sound" ? "Music" : m.title).tag(m.id) }
                 }
                 .pickerStyle(.segmented)
                 .sensoryFeedback(.selection, trigger: mode)
@@ -239,7 +239,7 @@ struct LightsView: View {
             ColorPicker("Bas", selection: Binding(get: { Color(ambiHex: bottom) },
                                                   set: { ambi.setLedColors([$0.ambiHex, top]) }),
                         supportsOpacity: false)
-            ColorPicker("Haut", selection: Binding(get: { Color(ambiHex: top) },
+            ColorPicker("Top", selection: Binding(get: { Color(ambiHex: top) },
                                                    set: { ambi.setLedColors([bottom, $0.ambiHex]) }),
                         supportsOpacity: false)
         }
@@ -255,17 +255,17 @@ struct LightsView: View {
                     .font(.system(size: 34))
                     .foregroundStyle(.secondary.opacity(0.5))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("\(ambi.macName) ne répond pas").font(.headline)
-                    Text("Vérifie que le Mac est allumé, sur le même Wi-Fi, et que Ambilight tourne.")
+                    Text("\(ambi.macName) isn’t responding").font(.headline)
+                    Text("Check that the Mac is on, on the same Wi-Fi, and that Ambilight is running.")
                         .font(.caption)
                         .foregroundStyle(.secondary.opacity(0.55))
                 }
             }
             HStack {
-                Button("Réessayer") { ambi.retry() }
+                Button("Try Again") { ambi.retry() }
                     .buttonStyle(.borderedProminent)
                     .tint(.appAccent)
-                Button("Autre Mac") { choosingMac = true }
+                Button("Other Mac") { choosingMac = true }
                     .buttonStyle(.bordered)
             }
         }
@@ -283,13 +283,13 @@ private struct MouseSection: View {
         LightsCard {
             DisclosureGroup(isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 14) {
-                    Toggle("Allumée", isOn: Binding(get: { ambi.live?.mouse?.running ?? false },
+                    Toggle("On", isOn: Binding(get: { ambi.live?.mouse?.running ?? false },
                                                     set: { _ in ambi.toggleMouse() }))
                         .tint(.appAccent)
                     if let modes = ambi.catalog?.mouse?.modes, !modes.isEmpty {
                         Picker("Mode", selection: Binding(get: { ambi.config?.mouse?.mode ?? "sound" },
                                                           set: { ambi.setMouseMode($0) })) {
-                            ForEach(modes) { m in Text(m.id == "sound" ? "Musique" : m.title).tag(m.id) }
+                            ForEach(modes) { m in Text(m.id == "sound" ? "Music" : m.title).tag(m.id) }
                         }
                         .tint(.appAccent)
                     }
@@ -305,7 +305,7 @@ private struct MouseSection: View {
                 }
                 .padding(.top, 12)
             } label: {
-                Label("Souris", systemImage: "computermouse.fill")
+                Label("Mouse", systemImage: "computermouse.fill")
                     .font(.headline)
                     .foregroundStyle(.primary)
             }
@@ -329,8 +329,8 @@ private struct DiscoveryView: View {
             HStack(spacing: 12) {
                 ProgressView()
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Recherche de ton Mac…").font(.headline)
-                    Text("Le Mac et l’iPhone doivent être sur le même Wi-Fi.")
+                    Text("Looking for your Mac…").font(.headline)
+                    Text("The Mac and the iPhone must be on the same Wi-Fi.")
                         .font(.caption)
                         .foregroundStyle(.secondary.opacity(0.55))
                 }
@@ -352,8 +352,8 @@ private struct DiscoveryView: View {
             }
         }
         LightsCard {
-            Text("Adresse du Mac").font(.headline)
-            Text("Affichée sur le Mac dans Réglages avancés › Appareils connectés.")
+            Text("Mac Address").font(.headline)
+            Text("Shown on the Mac in Advanced Settings › Connected Devices.")
                 .font(.caption)
                 .foregroundStyle(.secondary.opacity(0.55))
             HStack {
@@ -378,7 +378,7 @@ private struct DiscoveryView: View {
         connecting = id
         error = nil
         Task {
-            if await action() { done() } else { error = "Impossible de joindre ce Mac." }
+            if await action() { done() } else { error = "Can’t reach this Mac." }
             connecting = nil
         }
     }
@@ -398,10 +398,10 @@ private struct PairingView: View {
                 Image(systemName: "lightbulb.led.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(LinearGradient(colors: [.pink, .purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                Text(waitingCode ? "Tape le code affiché sur ton Mac" : "Associer cet iPhone à \(ambi.macName)")
+                Text(waitingCode ? "Type the code shown on your Mac" : "Pair This iPhone with \(ambi.macName)")
                     .font(.title3.bold())
                     .multilineTextAlignment(.center)
-                Text(waitingCode ? "Un code vient de s’afficher sur ton Mac." : "Un code à 4 chiffres va s’afficher sur le Mac.")
+                Text(waitingCode ? "A code just appeared on your Mac." : "A 4-digit code will appear on the Mac.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary.opacity(0.6))
                     .multilineTextAlignment(.center)
@@ -411,7 +411,7 @@ private struct PairingView: View {
                 } else {
                     Button { start() } label: {
                         Group {
-                            if busy { ProgressView().tint(.white) } else { Text("Associer").font(.headline) }
+                            if busy { ProgressView().tint(.white) } else { Text("Pair").font(.headline) }
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -422,7 +422,7 @@ private struct PairingView: View {
                 }
                 if let error { Text(error).font(.footnote).foregroundStyle(.red) }
                 if waitingCode {
-                    Button("Recevoir un nouveau code") { start() }
+                    Button("Get a New Code") { start() }
                         .font(.footnote)
                         .foregroundStyle(.secondary.opacity(0.7))
                 }
@@ -506,32 +506,32 @@ private struct LightsSettingsSheet: View {
             Form {
                 Section {
                     VStack(alignment: .leading) {
-                        Text("Sensibilité à la musique")
+                        Text("Music Sensitivity")
                         Slider(value: Binding(get: { ambi.config?.leds?.sensitivity ?? 1 }, set: { ambi.setSensitivity($0) }),
                                in: 0.3...2.5)
                     }
                     VStack(alignment: .leading) {
-                        Text("Vitesse des ambiances")
+                        Text("Scene Speed")
                         Slider(value: Binding(get: { ambi.config?.leds?.speed ?? 0.5 }, set: { ambi.setSpeed($0) }), in: 0...1)
                     }
                 }
-                Section("Mac connecté") {
-                    LabeledContent("Nom", value: ambi.macName)
-                    LabeledContent("Adresse", value: ambi.base?.replacingOccurrences(of: "http://", with: "") ?? "—")
-                    Button("Se connecter à un autre Mac") {
+                Section("Connected Mac") {
+                    LabeledContent("Name", value: ambi.macName)
+                    LabeledContent("Address", value: ambi.base?.replacingOccurrences(of: "http://", with: "") ?? "—")
+                    Button("Connect to Another Mac") {
                         chooseAnotherMac()
                         dismiss()
                     }
-                    Button("Oublier ce Mac", role: .destructive) { confirmForget = true }
+                    Button("Forget This Mac", role: .destructive) { confirmForget = true }
                 }
             }
-            .navigationTitle("Réglages")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("OK") { dismiss() } }
             }
-            .confirmationDialog("Oublier \(ambi.macName) ?", isPresented: $confirmForget, titleVisibility: .visible) {
-                Button("Oublier ce Mac", role: .destructive) {
+            .confirmationDialog("Forget \(ambi.macName)?", isPresented: $confirmForget, titleVisibility: .visible) {
+                Button("Forget This Mac", role: .destructive) {
                     ambi.forget()
                     dismiss()
                 }

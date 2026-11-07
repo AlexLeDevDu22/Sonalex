@@ -244,7 +244,7 @@ def resolve_album_id(album_id: str) -> str | None:
 def artist(artist_id: str) -> dict:
     sid = resolve_artist_id(artist_id)
     if not sid:
-        raise LookupError("Artiste introuvable")
+        raise LookupError("Artist not found")
     a = sp_get(f"/artists/{sid}")
     top = sp_get(f"/artists/{sid}/top-tracks", {"market": MARKET}).get("tracks", [])
     albums = sp_get(f"/artists/{sid}/albums", {"include_groups": "album", "market": MARKET, "limit": 50}).get("items", [])
@@ -396,4 +396,4 @@ def track_meta(key: str) -> dict:
         return norm_sp_track(sp_track(key[3:]))
     if key.startswith("dz:"):
         return norm_dz_track(dz_track(key[3:]))
-    raise LookupError(f"Clé inconnue : {key}")
+    raise LookupError(f"Unknown key: {key}")

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     enum Scope: String, CaseIterable {
-        case all = "Tout", artists = "Artistes", albums = "Albums", songs = "Morceaux", playlists = "Playlists"
+        case all = "All", artists = "Artists", albums = "Albums", songs = "Songs", playlists = "Playlists"
     }
 
     @Environment(PlayerManager.self) private var player
@@ -30,13 +30,13 @@ struct SearchView: View {
                 resultsList
             }
         }
-        .navigationTitle("Recherche")
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artistes, albums, morceaux…")
+        .navigationTitle("Search")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artists, albums, songs…")
         .searchScopes($source, activation: .onSearchPresentation) {
             // Without the online catalog on the server, the library is the only place to search.
             if ServerFeatures.shared.online {
-                Text("En ligne").tag("online")
-                Text("Bibliothèque").tag("library")
+                Text("Online").tag("online")
+                Text("Library").tag("library")
             }
         }
         .onSubmit(of: .search) { remember(query) }
@@ -52,9 +52,9 @@ struct SearchView: View {
                 if !recent.isEmpty {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
-                            Text("Recherches récentes").font(.title3.bold())
+                            Text("Recent Searches").font(.title3.bold())
                             Spacer()
-                            Button("Effacer") { recentRaw = "" }.foregroundStyle(Color.appAccent)
+                            Button("Clear") { recentRaw = "" }.foregroundStyle(Color.appAccent)
                         }
                         .padding(.bottom, 6)
                         ForEach(recent, id: \.self) { term in
@@ -76,7 +76,7 @@ struct SearchView: View {
 
                 if !genres.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Parcourir les catégories").font(.title2.bold())
+                        Text("Browse Categories").font(.title2.bold())
                         GenreGrid(genres: genres)
                     }
                     .padding(.horizontal, 20)
@@ -100,14 +100,14 @@ struct SearchView: View {
             }
 
             if show(.artists), !results.artists.isEmpty {
-                Section(header: sectionTitle("Artistes")) {
+                Section(header: sectionTitle("Artists")) {
                     ForEach(results.artists.prefix(scope == .all ? 5 : 50)) { artist in
                         NavigationLink(value: Route.artist(artist)) {
                             HStack(spacing: 14) {
                                 ArtworkView(item: artist, points: 52, circle: true).frame(width: 52, height: 52)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(artist.title)
-                                    Text("Artiste").font(.subheadline).foregroundStyle(.secondary)
+                                    Text("Artist").font(.subheadline).foregroundStyle(.secondary)
                                 }
                             }
                         }
@@ -118,12 +118,12 @@ struct SearchView: View {
             }
 
             if show(.songs), !results.songs.isEmpty {
-                Section(header: sectionTitle("Morceaux")) {
+                Section(header: sectionTitle("Songs")) {
                     let songs = Array(results.songs.prefix(scope == .all ? 8 : 60))
                     ForEach(Array(songs.enumerated()), id: \.element.id) { i, song in
                         TrackRow(track: song) {
                             remember(query)
-                            player.play(songs, startAt: i, source: "Recherche")
+                            player.play(songs, startAt: i, source: "Search")
                         }
                     }
                 }
@@ -163,7 +163,7 @@ struct SearchView: View {
                 if searching {
                     ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40).listRowSeparator(.hidden)
                 } else if let onlineError {
-                    ContentUnavailableView("Recherche en ligne indisponible", systemImage: "wifi.exclamationmark",
+                    ContentUnavailableView("Online Search Unavailable", systemImage: "wifi.exclamationmark",
                                            description: Text(onlineError))
                         .listRowSeparator(.hidden)
                 } else {
@@ -172,14 +172,14 @@ struct SearchView: View {
             }
 
             if let top = topArtist {
-                Section(header: sectionTitle("Meilleur résultat")) {
+                Section(header: sectionTitle("Top Result")) {
                     Button { open(top) } label: {
                         HStack(spacing: 14) {
                             ArtworkView(url: top.image.flatMap(URL.init(string:)), circle: true)
                                 .frame(width: 72, height: 72)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(top.name).font(.title3.weight(.semibold))
-                                Text("Artiste").font(.subheadline).foregroundStyle(.secondary)
+                                Text("Artist").font(.subheadline).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
@@ -191,20 +191,20 @@ struct SearchView: View {
             }
 
             if !online.tracks.isEmpty {
-                Section(header: sectionTitle("Morceaux")) {
+                Section(header: sectionTitle("Songs")) {
                     ForEach(online.tracks.prefix(12)) { track in
                         let item = track.item
                         TrackRow(track: item, showDownloaded: true) {
                             remember(query)
                             // A song picked from search: it plays, then recommendations follow, endlessly.
-                            player.play([item], source: "Recherche", autoplay: true)
+                            player.play([item], source: "Search", autoplay: true)
                         }
                     }
                 }
             }
 
             if !online.artists.isEmpty {
-                Section(header: sectionTitle("Artistes")) {
+                Section(header: sectionTitle("Artists")) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(alignment: .top, spacing: 16) {
                             ForEach(online.artists.prefix(12)) { OnlineArtistCircle(artist: $0) }

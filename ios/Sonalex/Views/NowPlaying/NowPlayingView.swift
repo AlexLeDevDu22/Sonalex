@@ -160,7 +160,7 @@ struct NowPlayingView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 if let track, MomentFavorite.shared.isMoment(track) {
-                    Label("Ton son du moment", systemImage: "flame.fill")
+                    Label("Your Song of the Moment", systemImage: "flame.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                         .transition(.opacity)

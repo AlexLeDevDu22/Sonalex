@@ -1,60 +1,59 @@
-# Installer le serveur Sonalex
+# Installing the Sonalex server
 
-Le serveur Sonalex s'installe **sur la machine où tourne Jellyfin** (il lit les fichiers de la
-bibliothèque pour préparer le Mix). Testé sur Raspberry Pi OS (Debian 13) avec Jellyfin 12 ;
-n'importe quel Debian / Ubuntu récent convient.
+The Sonalex server goes **on the machine that runs Jellyfin** (it reads the library's files to
+prepare the Mix). Tested on Raspberry Pi OS (Debian 13) with Jellyfin 12; any recent Debian /
+Ubuntu works.
 
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/AlexLeDevDu22/sonalex.git && cd sonalex
 bash deploy/setup.sh
 ```
 
-Le premier lancement crée `backend/.env` à partir de `backend/.env.example` et s'arrête :
-remplis au moins l'adresse de Jellyfin et un compte **administrateur** (le serveur en a besoin
-pour connaître le chemin des fichiers), puis relance `bash deploy/setup.sh`.
+The first run creates `backend/.env` from `backend/.env.example` and stops: fill in at least the
+Jellyfin address and an **administrator** account (the server needs it to know where the files
+are), then run `bash deploy/setup.sh` again.
 
-Le script est idempotent (on peut le relancer autant qu'on veut) et découpé en étapes :
+The script is idempotent (run it as often as you like) and split into steps:
 
-| Étape | Ce qu'elle fait | sudo |
+| Step | What it does | sudo |
 |---|---|---|
-| `packages` | ffmpeg, python3-venv, curl ; Jellyfin s'il n'est pas installé (script officiel) | oui |
-| `data` | le dossier de données (`SONALEX_DATA_DIR`) : `Musics/`, `logs/`, `temp/`, `config/` | oui |
-| `python` | `backend/.venv` et les dépendances | non |
-| `proxy` | Caddy dans `~/.local/bin`, Jellyfin déplacé sur un port interne | oui |
-| `services` | les services systemd *utilisateur*, générés depuis `deploy/templates/` | non* |
-| `check` | vérifie que tout répond | non |
+| `packages` | ffmpeg, python3-venv, curl; Jellyfin if it isn't installed (official script) | yes |
+| `data` | the data folder (`SONALEX_DATA_DIR`): `Musics/`, `logs/`, `temp/`, `config/` | yes |
+| `python` | `backend/.venv` and the dependencies | no |
+| `proxy` | Caddy in `~/.local/bin`, Jellyfin moved to an internal port | yes |
+| `services` | the systemd *user* services, generated from `deploy/templates/` | no* |
+| `check` | checks that everything answers | no |
 
-`bash deploy/setup.sh services` ne refait qu'une étape. \* `services` demande sudo une seule
-fois, pour `loginctl enable-linger` (les services démarrent au boot, sans session ouverte).
+`bash deploy/setup.sh services` runs a single step. \* `services` asks for sudo once, for
+`loginctl enable-linger` (the services then start at boot, without a logged-in session).
 
-## Comment l'app trouve le serveur
+## How the app finds the server
 
-L'app se connecte à l'adresse de Jellyfin et cherche le serveur Sonalex **à la même adresse,
-sous `/sonalex/`**. Il faut donc un relais devant les deux :
+The app connects to the Jellyfin address and looks for the Sonalex server **at the same address,
+under `/sonalex/`**. So both need a relay in front of them:
 
 ```
-app ──► :8096 ─┬─ /sonalex/*  ─► serveur Sonalex   127.0.0.1:8098
-               └─ le reste     ─► Jellyfin          127.0.0.1:8097
+app ──► :8096 ─┬─ /sonalex/*  ─► Sonalex server   127.0.0.1:8098
+               └─ the rest     ─► Jellyfin         127.0.0.1:8097
 ```
 
-### Option 1 : le relais Caddy du script (`SONALEX_PROXY=caddy`, par défaut)
+### Option 1: the script's Caddy relay (`SONALEX_PROXY=caddy`, the default)
 
-Le script installe Caddy sur le port public (8096, celui de Jellyfin d'habitude) et déplace
-Jellyfin sur 8097. L'adresse que tu donnes à l'app ne change pas. Ensuite, dans Jellyfin :
-**Tableau de bord → Réseau → Proxies connus : `127.0.0.1`** (pour qu'il voie l'adresse réelle des
-appareils).
+The script puts Caddy on the public port (8096, Jellyfin's usual one) and moves Jellyfin to 8097.
+The address you give the app doesn't change. Then, in Jellyfin: **Dashboard → Networking → Known
+proxies: `127.0.0.1`** (so it sees the devices' real addresses).
 
-Ports modifiables dans `backend/.env` : `SONALEX_PUBLIC_PORT`, `SONALEX_JELLYFIN_PORT`,
-`SONALEX_SERVER_PORT`. Mets alors `SONALEX_JELLYFIN_URL=http://127.0.0.1:<SONALEX_JELLYFIN_PORT>`.
+Ports can be changed in `backend/.env`: `SONALEX_PUBLIC_PORT`, `SONALEX_JELLYFIN_PORT`,
+`SONALEX_SERVER_PORT`. Then set `SONALEX_JELLYFIN_URL=http://127.0.0.1:<SONALEX_JELLYFIN_PORT>`.
 
-### Option 2 : ton propre reverse proxy (`SONALEX_PROXY=none`)
+### Option 2: your own reverse proxy (`SONALEX_PROXY=none`)
 
-Jellyfin est déjà derrière nginx, Caddy ou Traefik (HTTPS, nom de domaine…) : ajoute une route
-`/sonalex/` vers le serveur, **préfixe retiré**, WebSockets autorisés (Connect).
+Jellyfin is already behind nginx, Caddy or Traefik (HTTPS, a domain name…): add a `/sonalex/` route
+to the server, **prefix stripped**, with WebSockets allowed (Connect).
 
-nginx :
+nginx:
 
 ```nginx
 location /sonalex/ {
@@ -67,10 +66,10 @@ location /sonalex/ {
 }
 ```
 
-Caddy :
+Caddy:
 
 ```caddy
-jellyfin.exemple.fr {
+jellyfin.example.com {
 	handle_path /sonalex/* {
 		reverse_proxy 127.0.0.1:8098 {
 			flush_interval -1
@@ -80,37 +79,37 @@ jellyfin.exemple.fr {
 }
 ```
 
-Garde alors Jellyfin sur son port habituel et `SONALEX_JELLYFIN_URL=http://127.0.0.1:8096`.
+Keep Jellyfin on its usual port and `SONALEX_JELLYFIN_URL=http://127.0.0.1:8096`.
 
-Pour vérifier : `curl https://jellyfin.exemple.fr/sonalex/api/health` doit répondre
+To check: `curl https://jellyfin.example.com/sonalex/api/health` must answer
 `{"ok":true,"name":"Sonalex server",…}`.
 
 ## Services
 
-| Service | Rôle |
+| Service | Role |
 |---|---|
-| `sonalex-server` | le serveur (port 8098, 127.0.0.1 seulement) |
-| `sonalex-proxy` | le relais Caddy (option 1) |
-| `sonalex-sync.timer` | la synchro Spotify de minuit (si `SONALEX_SPOTIFY_SYNC=1`) |
+| `sonalex-server` | the server (port 8098, 127.0.0.1 only) |
+| `sonalex-proxy` | the Caddy relay (option 1) |
+| `sonalex-sync.timer` | the midnight Spotify sync (if `SONALEX_SPOTIFY_SYNC=1`) |
 
 ```bash
 systemctl --user status sonalex-server
-journalctl --user -u sonalex-server -f      # ou : tail -f <données>/logs/server.log
-systemctl --user restart sonalex-server     # après avoir modifié backend/.env
+journalctl --user -u sonalex-server -f      # or: tail -f <data>/logs/server.log
+systemctl --user restart sonalex-server     # after changing backend/.env
 ```
 
-Les fichiers des services sont générés dans `~/.config/systemd/user/` à partir de
-`deploy/templates/` : modifie les modèles, puis `bash deploy/setup.sh services`. Les anciens
-services (`musique-api`, `musique-proxy`, `hosted-spotify-refresh`) sont remplacés automatiquement.
+The service files are generated in `~/.config/systemd/user/` from `deploy/templates/`: edit the
+templates, then `bash deploy/setup.sh services`. Services from before the app was renamed
+(`musique-api`, `musique-proxy`, `hosted-spotify-refresh`) are replaced automatically.
 
-## Mettre à jour
+## Updating
 
 ```bash
 git pull && bash deploy/setup.sh python && systemctl --user restart sonalex-server
 ```
 
-## Revenir en arrière (relais Caddy)
+## Undoing the Caddy relay
 
-1. Dans Jellyfin, **Tableau de bord → Réseau**, remettre le port HTTP local à **8096**, puis
-   redémarrer Jellyfin.
+1. In Jellyfin, **Dashboard → Networking**, set the local HTTP port back to **8096**, then restart
+   Jellyfin.
 2. `systemctl --user disable --now sonalex-proxy sonalex-server`

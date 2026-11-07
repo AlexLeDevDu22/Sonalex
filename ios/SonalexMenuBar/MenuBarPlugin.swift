@@ -68,12 +68,12 @@ final class MenuBarPlugin: NSObject, MenuBarBridge {
             menu.addItem(now)
             menu.addItem(.separator())
         }
-        add(model.isPlaying ? "Pause" : "Lecture", "playpause")
-        add("Suivant", "next")
-        add("Précédent", "previous")
+        add(model.isPlaying ? "Pause" : "Playback", "playpause")
+        add("Next", "next")
+        add("Previous", "previous")
         menu.addItem(.separator())
-        add("Ouvrir Sonalex", "window")
-        add("Quitter Sonalex", "quit", "q")
+        add("Open Sonalex", "window")
+        add("Quit Sonalex", "quit", "q")
         item?.menu = menu
         item?.button?.performClick(nil)
         item?.menu = nil  // left click keeps opening the player
@@ -228,7 +228,7 @@ struct MenuBarView: View {
                 .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(model.title.isEmpty ? "Rien en lecture" : model.title)
+                    Text(model.title.isEmpty ? "Nothing Playing" : model.title)
                         .font(.headline)
                         .lineLimit(2)
                     if !model.artist.isEmpty {
@@ -269,9 +269,9 @@ struct MenuBarView: View {
             Divider()
 
             HStack {
-                Button("Ouvrir Sonalex") { send("window") }
+                Button("Open Sonalex") { send("window") }
                 Spacer()
-                Button("Quitter") { send("quit") }
+                Button("Quit") { send("quit") }
             }
             .buttonStyle(.borderless)
             .font(.callout)

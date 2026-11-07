@@ -17,7 +17,7 @@ ditto "$APP" "$DEST"
 "$LSREGISTER" -u "$APP" >/dev/null 2>&1 || true
 "$LSREGISTER" -f -R "$DEST"
 if /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$DEST/Contents/Info.plist" | grep -q sonalex; then
-  echo "Sonalex installée dans $DEST et déclarée pour sonalex://"
+  echo "Sonalex installed in $DEST and registered for sonalex://"
 else
-  echo "warning: $DEST/Contents/Info.plist ne déclare pas sonalex:// — relance xcodegen puis rebuild."
+  echo "warning: $DEST/Contents/Info.plist doesn't declare sonalex:// — run xcodegen, then rebuild."
 fi

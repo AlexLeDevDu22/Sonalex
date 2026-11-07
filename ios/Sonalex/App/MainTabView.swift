@@ -10,22 +10,22 @@ struct MainTabView: View {
         @Bindable var player = player
 
         TabView(selection: router.tabSelection) {
-            Tab("Accueil", systemImage: "house.fill", value: AppTab.home) {
+            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
                 stack(.home) { HomeView() }
             }
-            Tab("Nouveautés", systemImage: "square.grid.2x2.fill", value: AppTab.new) {
+            Tab("New", systemImage: "square.grid.2x2.fill", value: AppTab.new) {
                 stack(.new) { NewView() }
             }
-            Tab("Bibliothèque", systemImage: "square.stack.fill", value: AppTab.library) {
+            Tab("Library", systemImage: "square.stack.fill", value: AppTab.library) {
                 stack(.library) { LibraryView() }
             }
             // Only when the Ambilight server on the Mac answers (or while you're on the page).
             if ambi.reachable || router.tab == .lights {
-                Tab("Lumières", systemImage: "lightbulb.led.fill", value: AppTab.lights) {
+                Tab("Lights", systemImage: "lightbulb.led.fill", value: AppTab.lights) {
                     stack(.lights) { LightsView() }
                 }
             }
-            Tab("Recherche", systemImage: "magnifyingglass", value: AppTab.search, role: .search) {
+            Tab("Search", systemImage: "magnifyingglass", value: AppTab.search, role: .search) {
                 stack(.search) { SearchView() }
             }
         }

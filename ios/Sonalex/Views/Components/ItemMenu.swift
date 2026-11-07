@@ -17,27 +17,27 @@ struct ItemMenu: View {
         if !item.isSong {
             Section {
                 Button { withTracks { player.play($0, source: item.title, sourceId: item.playbackSourceId) } } label: {
-                    Label("Lire", systemImage: "play.fill")
+                    Label("Play", systemImage: "play.fill")
                 }
                 Button { withTracks { player.play($0, shuffle: true, source: item.title, sourceId: item.playbackSourceId) } } label: {
-                    Label("Lecture aléatoire", systemImage: "shuffle")
+                    Label("Shuffle", systemImage: "shuffle")
                 }
             }
         }
 
         Section {
             Button {
-                withTracks { player.playNext($0); toast.show("Lu ensuite", systemImage: "text.line.first.and.arrowtriangle.forward") }
-            } label: { Label("Lire ensuite", systemImage: "text.line.first.and.arrowtriangle.forward") }
+                withTracks { player.playNext($0); toast.show("Playing Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
+            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
             Button {
-                withTracks { player.addToQueue($0); toast.show("Ajouté à la file", systemImage: "text.line.last.and.arrowtriangle.forward") }
-            } label: { Label("Lire en dernier", systemImage: "text.line.last.and.arrowtriangle.forward") }
+                withTracks { player.addToQueue($0); toast.show("Added to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
         }
 
         Section {
             if !item.isArtist {
                 Button { router.addToPlaylist = item } label: {
-                    Label("Ajouter à une playlist…", systemImage: "text.badge.plus")
+                    Label("Add to a Playlist…", systemImage: "text.badge.plus")
                 }
             }
             if !item.isExternal, item.isSong || item.isAlbum || item.isPlaylist {
@@ -52,19 +52,19 @@ struct ItemMenu: View {
                         withTracks { store.download($0) }
                     }
                 } label: {
-                    Label(here ? "Retirer de cet appareil" : "Télécharger sur cet appareil",
+                    Label(here ? "Remove from This Device" : "Download to This Device",
                           systemImage: here ? "minus.circle" : "arrow.down.circle")
                 }
                 if item.isAlbum {
                     Button { withTracks { store.remove($0) } } label: {
-                        Label("Retirer l’album de cet appareil", systemImage: "minus.circle")
+                        Label("Remove Album from This Device", systemImage: "minus.circle")
                     }
                 }
             }
             if !item.isPlaylist {
                 let fav = favorites.isFavorite(item)
                 Button { favorites.toggle(item) } label: {
-                    Label(fav ? "Retirer des favoris" : "Ajouter aux favoris", systemImage: fav ? "star.slash" : "star")
+                    Label(fav ? "Remove from Favorites" : "Add to Favorites", systemImage: fav ? "star.slash" : "star")
                 }
             }
             if item.isSong || item.isArtist || item.isAlbum {
@@ -82,7 +82,7 @@ struct ItemMenu: View {
                                         sourceId: item.isArtist ? "station:\(item.id)" : nil)
                         } catch { toast.error(error) }
                     }
-                } label: { Label("Créer une station", systemImage: "dot.radiowaves.left.and.right") }
+                } label: { Label("Create Station", systemImage: "dot.radiowaves.left.and.right") }
             }
         }
 
@@ -91,7 +91,7 @@ struct ItemMenu: View {
                 Button {
                     NavDiagnostics.log("tap.menuAlbum", ["item": item.title])
                     router.open(route)
-                } label: { Label("Aller à l’album", systemImage: "square.stack") }
+                } label: { Label("Go to Album", systemImage: "square.stack") }
             }
             let artists = item.isSong ? (item.artistItems ?? []) : (item.albumArtists ?? [])
             if artists.count > 1 {
@@ -102,17 +102,17 @@ struct ItemMenu: View {
                             router.open(Item.artistRoute(a))
                         }
                     }
-                } label: { Label("Aller à l’artiste", systemImage: "music.microphone") }
+                } label: { Label("Go to Artist", systemImage: "music.microphone") }
             } else if item.isSong || item.isAlbum, let artist = (item.isSong ? item.firstArtist : item.firstAlbumArtist) {
                 Button {
                     NavDiagnostics.log("tap.menuArtist", ["artist": artist.name ?? ""])
                     router.open(Item.artistRoute(artist))
                 } label: {
-                    Label("Aller à l’artiste", systemImage: "music.microphone")
+                    Label("Go to Artist", systemImage: "music.microphone")
                 }
             }
             if item.isSong, ServerFeatures.shared.online {
-                Button { router.credits = item } label: { Label("Crédits", systemImage: "person.2") }
+                Button { router.credits = item } label: { Label("Credits", systemImage: "person.2") }
             }
         }
 
@@ -123,10 +123,10 @@ struct ItemMenu: View {
                         do {
                             try await api.removeFromPlaylist(playlist.playlistId, entryIds: [playlist.entryId])
                             onRemoved?()
-                            toast.show("Retiré de la playlist", systemImage: "minus.circle")
+                            toast.show("Removed from Playlist", systemImage: "minus.circle")
                         } catch { toast.error(error) }
                     }
-                } label: { Label("Retirer de la playlist", systemImage: "minus.circle") }
+                } label: { Label("Remove from Playlist", systemImage: "minus.circle") }
             }
         }
     }

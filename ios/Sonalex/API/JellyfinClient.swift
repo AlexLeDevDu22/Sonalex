@@ -7,12 +7,12 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notLoggedIn: "Non connecté."
-        case .unauthorized: "Session expirée, reconnecte-toi."
-        case .badURL: "Adresse du serveur invalide."
-        case .unreachable: "Serveur injoignable. Vérifie l’adresse et que tu es sur le bon réseau."
-        case .badCredentials: "Identifiant ou mot de passe incorrect."
-        case .http(let code): "Erreur du serveur (\(code))."
+        case .notLoggedIn: "Not signed in."
+        case .unauthorized: "Your session expired, please sign in again."
+        case .badURL: "Invalid server address."
+        case .unreachable: "Can’t reach the server. Check the address and that you’re on the right network."
+        case .badCredentials: "Wrong username or password."
+        case .http(let code): "Server error (\(code))."
         }
     }
 }

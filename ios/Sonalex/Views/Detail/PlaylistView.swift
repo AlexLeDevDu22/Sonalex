@@ -24,7 +24,7 @@ struct PlaylistView: View {
                         .foregroundStyle(Color.appAccent)
                         .frame(width: 48, height: 48)
                         .background(Color(.secondarySystemFill), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                    Text("Ajouter des morceaux").foregroundStyle(Color.appAccent)
+                    Text("Add Songs").foregroundStyle(Color.appAccent)
                     Spacer()
                 }
                 .contentShape(Rectangle())
@@ -35,7 +35,7 @@ struct PlaylistView: View {
             if loading {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 40).listRowSeparator(.hidden)
             } else if tracks.isEmpty {
-                Text("Cette playlist est vide.")
+                Text("This playlist is empty.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -76,15 +76,15 @@ struct PlaylistView: View {
                 Button { OfflineStore.shared.setOffline(playlist: playlist, !offline) } label: {
                     Image(systemName: offline ? "arrow.down.circle.fill" : "arrow.down.circle")
                 }
-                .help(offline ? "Retirer de cet appareil" : "Télécharger sur cet appareil")
+                .help(offline ? "Remove from This Device" : "Download to This Device")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button { addingSongs = true } label: { Label("Ajouter des morceaux", systemImage: "plus") }
+                    Button { addingSongs = true } label: { Label("Add Songs", systemImage: "plus") }
                     ItemMenu(item: playlist)
                     Section {
                         Button(role: .destructive) { confirmDelete = true } label: {
-                            Label("Supprimer la playlist", systemImage: "trash")
+                            Label("Delete Playlist", systemImage: "trash")
                         }
                     }
                 } label: { Image(systemName: "ellipsis") }
@@ -94,8 +94,8 @@ struct PlaylistView: View {
             AddSongsSheet(playlist: playlist, alreadyIn: Set(tracks.map(\.id))) { Task { await load() } }
                 .appEnvironment()
         }
-        .confirmationDialog("Supprimer « \(playlist.title) » ?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Supprimer la playlist", role: .destructive) {
+        .confirmationDialog("Delete “\(playlist.title)”?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) {
                 Task {
                     do {
                         try await JellyfinClient.shared.deleteItem(playlist.id)

@@ -48,7 +48,7 @@ targets:
         # makes iOS ignore NSAllowsArbitraryLoads, which would block a public http:// address.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
-        NSLocalNetworkUsageDescription: Sonalex se connecte à ton serveur Jellyfin sur ton réseau, et peut y trouver des lumières Ambilight à animer avec la musique.
+        NSLocalNetworkUsageDescription: Sonalex connects to your Jellyfin server on your network, and can find Ambilight lights there to sync with the music.
         NSBonjourServices: [_ambilight._tcp]
         # sonalex:// (Atoll, scripts…; musique:// for what was set up before the new name), for every
         # platform of the target: iPhone AND Mac Catalyst.
@@ -61,21 +61,21 @@ targets:
     postBuildScripts:
       # Fails the build if the built app doesn't declare sonalex:// (instead of finding out
       # from "There is no application set to open the URL sonalex://…").
-      - name: Vérifier le schéma sonalex://
+      - name: Check the sonalex:// scheme
         basedOnDependencyAnalysis: false
         inputFiles:
           - $(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)
         script: |
           PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
           if ! /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$PLIST" 2>/dev/null | grep -qx sonalex; then
-            echo "error: ${PLIST} ne déclare pas le schéma sonalex:// (CFBundleURLTypes). Relance xcodegen."
+            echo "error: ${PLIST} doesn't declare the sonalex:// scheme (CFBundleURLTypes). Run xcodegen again."
             exit 1
           fi
-          echo "sonalex:// déclaré dans ${PLIST}"
+          echo "sonalex:// declared in ${PLIST}"
     scheme:
       # Mac build: install in /Applications and register as the sonalex:// handler.
       postActions:
-        - name: Installer l'app Mac dans Applications
+        - name: Install the Mac app in Applications
           settingsTarget: Sonalex
           script: "\"${PROJECT_DIR}/scripts/install-mac-app.sh\""
     settings:

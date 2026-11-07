@@ -103,26 +103,26 @@ def _user_for_token(token: str) -> str | None:
 def auth(request: Request) -> Auth:
     token = _token_from(request)
     if not token:
-        raise HTTPException(401, "Non connecté")
+        raise HTTPException(401, "Not signed in")
     try:
         user_id = _user_for_token(token)
     except requests.RequestException:
-        raise HTTPException(503, "Jellyfin injoignable")
+        raise HTTPException(503, "Jellyfin unreachable")
     if not user_id:
-        raise HTTPException(401, "Session Jellyfin invalide")
+        raise HTTPException(401, "Invalid Jellyfin session")
     return Auth(token, user_id)
 
 
 def online(a: Auth = Depends(auth)) -> Auth:
     """Routes of the online catalog: only when the server owner turned it on."""
     if not ONLINE:
-        raise HTTPException(404, "Catalogue en ligne désactivé sur ce serveur")
+        raise HTTPException(404, "The online catalog is off on this server")
     return a
 
 
 def spotify_sync(a: Auth = Depends(auth)) -> Auth:
     if not SPOTIFY_SYNC:
-        raise HTTPException(404, "Synchro Spotify désactivée sur ce serveur")
+        raise HTTPException(404, "The Spotify sync is off on this server")
     return a
 
 
@@ -176,7 +176,7 @@ async def album(album_id: str, a: Auth = Depends(online)):
     # "sp:<id>", or "name:<album>|<artist>" for the public version of a library album.
     sid = await run_in_threadpool(catalog.resolve_album_id, album_id)
     if not sid:
-        raise HTTPException(404, "Album introuvable en ligne")
+        raise HTTPException(404, "Album not found online")
     page = await run_in_threadpool(catalog.album, sid)
     page["tracks"] = [dict(t) for t in page["tracks"]]
     await run_in_threadpool(_attach, page["tracks"], a)
@@ -186,11 +186,11 @@ async def album(album_id: str, a: Auth = Depends(online)):
 @app.get("/api/playlist/{playlist_id}")
 async def playlist(playlist_id: str, a: Auth = Depends(online)):
     if not playlist_id.startswith("sp:"):
-        raise HTTPException(404, "Playlist inconnue")
+        raise HTTPException(404, "Unknown playlist")
     try:
         page = await run_in_threadpool(catalog.playlist, playlist_id[3:])
     except requests.HTTPError as e:
-        raise HTTPException(404, "Cette playlist n’est pas accessible.") from e
+        raise HTTPException(404, "This playlist isn’t accessible.") from e
     page["tracks"] = [dict(t) for t in page["tracks"]]
     await run_in_threadpool(_attach, page["tracks"], a)
     return page
@@ -238,7 +238,7 @@ async def save(key: str, body: SaveBody, a: Auth = Depends(online)):
         raise HTTPException(404, str(e))
     except Exception as e:
         print("[save] failed:", repr(e))
-        raise HTTPException(500, str(e) or "Enregistrement impossible")
+        raise HTTPException(500, str(e) or "Couldn’t save the song")
     return {"jellyfin": item}
 
 
@@ -345,10 +345,10 @@ async def _file_response(path, range_header: str | None, head: bool, media_type:
 @app.api_route("/api/mix/stream/{mix_id}", methods=["GET", "HEAD"])
 async def mix_stream(mix_id: str, request: Request, a: Auth = Depends(auth)):
     if not re.fullmatch(r"[0-9a-f]{20}", mix_id):
-        raise HTTPException(404, "Mix inconnu")
+        raise HTTPException(404, "Unknown mix")
     path = await run_in_threadpool(automix.wait_file, mix_id)
     if not path:
-        raise HTTPException(404, "Transition indisponible")
+        raise HTTPException(404, "Transition unavailable")
     response = await _file_response(path, request.headers.get("range"), request.method == "HEAD", "audio/mp4")
     # The song's real start in the segment, measured at render time (beat alignment).
     for k, v in automix.segment_meta(mix_id).items():
@@ -385,7 +385,7 @@ async def song_credits(title: str, artist: str, a: Auth = Depends(online)):
     try:
         return await run_in_threadpool(credits.credits, title, artist)
     except requests.RequestException:
-        raise HTTPException(502, "Crédits indisponibles pour le moment")
+        raise HTTPException(502, "Credits unavailable right now")
 
 
 @app.get("/api/daily")
@@ -421,8 +421,8 @@ def sync_status(a: Auth = Depends(spotify_sync)):
 def warm_up():
     for log in (PLAYER_LOG, API_LOG):
         _trim_log(log)
-    print(f"[api] Sonalex server {VERSION} – catalogue en ligne : {'oui' if ONLINE else 'non'}, "
-          f"synchro Spotify : {'oui' if SPOTIFY_SYNC else 'non'}", flush=True)
+    print(f"[api] Sonalex server {VERSION} – online catalog: {'on' if ONLINE else 'off'}, "
+          f"Spotify sync: {'on' if SPOTIFY_SYNC else 'off'}", flush=True)
     if SPOTIFY_SYNC:
         LIVE.start()
     if ONLINE:

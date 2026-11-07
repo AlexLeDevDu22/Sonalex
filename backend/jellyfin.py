@@ -70,7 +70,7 @@ if not USER_ID:
     try:
         USER_ID = requests.get(f"{SERVER}/Users/Me", headers=HEADERS, timeout=TIMEOUT).json()["Id"]
     except Exception as e:
-        print(f"[jellyfin] JELLYFIN_USER_ID introuvable : {e!r}")
+        print(f"[jellyfin] JELLYFIN_USER_ID not found: {e!r}")
 
 
 def _get(url, raise_for_status=True, **kwargs):

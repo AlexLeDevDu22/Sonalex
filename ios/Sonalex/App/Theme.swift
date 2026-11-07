@@ -16,13 +16,13 @@ enum Format {
         let minutes = Int((seconds / 60).rounded())
         if minutes >= 60 {
             let h = minutes / 60, m = minutes % 60
-            return m == 0 ? "\(h) h" : "\(h) h \(m) min"
+            return m == 0 ? "\(h) h" : "\(h) hr \(m) min"
         }
         return minutes <= 1 ? "1 minute" : "\(minutes) minutes"
     }
 
     static func songCount(_ n: Int) -> String {
-        n <= 1 ? "\(n) morceau" : "\(n) morceaux"
+        n == 1 ? "1 song" : "\(n) songs"
     }
 
     static func releaseDate(_ item: Item) -> String? {
@@ -31,7 +31,7 @@ enum Format {
         parser.locale = Locale(identifier: "en_US_POSIX")
         parser.dateFormat = "yyyy-MM-dd"
         guard let date = parser.date(from: String(raw.prefix(10))) else { return item.year.map(String.init) }
-        return date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "fr_FR")))
+        return date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "en_US")))
     }
 }
 

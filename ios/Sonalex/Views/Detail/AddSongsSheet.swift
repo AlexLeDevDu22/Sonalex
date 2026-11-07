@@ -39,17 +39,17 @@ struct AddSongsSheet: View {
                 }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Rechercher dans tes morceaux")
-            .navigationTitle("Ajouter à « \(playlist.title) »")
+                        prompt: "Search your songs")
+            .navigationTitle("Add to “\(playlist.title)”")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         add()
                     } label: {
                         if saving { ProgressView() } else {
-                            Text(selected.isEmpty ? "Ajouter" : "Ajouter (\(selected.count))").bold()
+                            Text(selected.isEmpty ? "Add" : "Add (\(selected.count))").bold()
                         }
                     }
                     .disabled(selected.isEmpty || saving)
@@ -57,7 +57,7 @@ struct AddSongsSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if !selected.isEmpty {
-                    Text("\(Format.songCount(selected.count)) sélectionné\(selected.count > 1 ? "s" : "")")
+                    Text("\(Format.songCount(selected.count)) selected")
                         .font(.footnote.weight(.semibold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -91,7 +91,7 @@ struct AddSongsSheet: View {
                     .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title).lineLimit(1)
-                    Text(inPlaylist ? "Déjà dans la playlist" : song.artistLine)
+                    Text(inPlaylist ? "Already in the playlist" : song.artistLine)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -113,7 +113,7 @@ struct AddSongsSheet: View {
         Task {
             do {
                 try await JellyfinClient.shared.addToPlaylist(playlist.id, ids: ids)
-                ToastCenter.shared.show("\(Format.songCount(ids.count)) ajouté\(ids.count > 1 ? "s" : "")",
+                ToastCenter.shared.show("\(Format.songCount(ids.count)) added",
                                         systemImage: "text.badge.checkmark")
                 onAdded()
                 dismiss()

@@ -15,9 +15,9 @@ enum AmbiError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notConnected: "Mac introuvable."
-        case .unauthorized: "Ce Mac ne reconnaît plus l’iPhone. Refais l’appairage."
-        case .server(_, let message): message ?? "Erreur du Mac."
+        case .notConnected: "Mac not found."
+        case .unauthorized: "This Mac no longer recognizes this iPhone. Pair them again."
+        case .server(_, let message): message ?? "Mac error."
         }
     }
 }

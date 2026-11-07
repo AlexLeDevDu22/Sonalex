@@ -25,7 +25,7 @@ struct ArtistView: View {
                     LoadingView()
                 }
                 if !top.isEmpty {
-                    SongGridShelf(title: "Top titres", songs: top, source: current.title)
+                    SongGridShelf(title: "Top Songs", songs: top, source: current.title)
                 }
                 if !albums.isEmpty {
                     Shelf("Albums") {
@@ -33,18 +33,18 @@ struct ArtistView: View {
                     }
                 }
                 if !appearsOn.isEmpty {
-                    Shelf("Apparaît sur") {
+                    Shelf("Appears On") {
                         ForEach(appearsOn) { ItemCard(item: $0, width: 150) }
                     }
                 }
                 if !similar.isEmpty {
-                    Shelf("Artistes similaires") {
+                    Shelf("Similar Artists") {
                         ForEach(similar) { ArtistCircle(artist: $0, size: 120) }
                     }
                 }
                 if let overview = current.overview, !overview.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: "À propos de \(current.title)")
+                        SectionHeader(title: "About \(current.title)")
                         Text(overview)
                             .font(.body)
                             .foregroundStyle(.secondary)

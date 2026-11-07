@@ -163,7 +163,7 @@ struct SongGridShelf: View {
     }
 }
 
-/// The two big grey "Lecture" / "Aléatoire" buttons of album & playlist pages.
+/// The two big grey "Play" / "Shuffle" buttons of album & playlist pages.
 ///
 /// Instant feedback: the tapped button shows a spinner and both are disabled until the song
 /// actually plays. Tapped before the tracks are loaded (`ready == false`), it starts as soon as
@@ -180,8 +180,8 @@ struct PlayShuffleButtons: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            button("Lecture", systemImage: "play.fill", mode: .play)
-            button("Aléatoire", systemImage: "shuffle", mode: .shuffle)
+            button("Play", systemImage: "play.fill", mode: .play)
+            button("Shuffle", systemImage: "shuffle", mode: .shuffle)
         }
         .disabled(pending != nil)
         .onChange(of: ready) { _, isReady in
@@ -255,23 +255,23 @@ struct ErrorStateView: View {
     var body: some View {
         let offline = Connectivity.shared.isOffline
         ContentUnavailableView {
-            Label(offline ? "Pas de connexion" : "Impossible de charger",
+            Label(offline ? "No Connection" : "Couldn’t Load",
                   systemImage: offline ? "wifi.slash" : "wifi.exclamationmark")
         } description: {
-            Text(offline ? "Tes sons téléchargés restent disponibles sur cet appareil." : message)
+            Text(offline ? "Your downloaded songs are still available on this device." : message)
         } actions: {
             if offline, !OfflineStore.shared.entries.isEmpty {
                 NavigationLink(value: Route.downloaded) {
-                    Label("Sons téléchargés", systemImage: "arrow.down.circle")
+                    Label("Downloaded Songs", systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.borderedProminent)
             }
             // Two different style types: a ternary between them doesn't compile.
             if offline {
-                Button("Réessayer") { Task { await retry() } }
+                Button("Try Again") { Task { await retry() } }
                     .buttonStyle(.bordered)
             } else {
-                Button("Réessayer") { Task { await retry() } }
+                Button("Try Again") { Task { await retry() } }
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -434,8 +434,8 @@ struct VersionSwitch: View {
     var body: some View {
         if let other {
             Picker("Version", selection: Binding(get: { isOnline }, set: { if $0 != isOnline { router.replaceTop(other) } })) {
-                Text("Ma bibliothèque").tag(false)
-                Text("Tout (en ligne)").tag(true)
+                Text("My Library").tag(false)
+                Text("All (online)").tag(true)
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 380)

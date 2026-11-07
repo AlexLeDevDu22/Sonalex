@@ -231,7 +231,7 @@ final class SonalexAPI {
         let code = (result.1 as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else {
             let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
-            throw Failure.server(detail ?? "Erreur du serveur Musique (\(code)).")
+            throw Failure.server(detail ?? "Sonalex server error (\(code)).")
         }
         return data
     }

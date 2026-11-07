@@ -89,30 +89,30 @@ struct HomeView: View {
                     }
                     topPicks
                     if !model.recentAlbums.isEmpty {
-                        Shelf("Écoutés récemment") {
+                        Shelf("Recently Played") {
                             ForEach(model.recentAlbums) { ItemCard(item: $0) }
                         }
                     }
                     if !model.mostPlayed.isEmpty {
-                        SongGridShelf(title: "Les plus écoutés", songs: model.mostPlayed)
+                        SongGridShelf(title: "Most Played", songs: model.mostPlayed)
                     }
                     if !model.playlists.isEmpty {
-                        Shelf("Vos playlists", destination: .playlists) {
+                        Shelf("Your Playlists", destination: .playlists) {
                             ForEach(RecentSources.shared.sorted(model.playlists)) { ItemCard(item: $0) }
                         }
                     }
                     if !model.topArtists.isEmpty {
-                        Shelf("Vos artistes") {
+                        Shelf("Your Artists") {
                             ForEach(model.topArtists) { ArtistCircle(artist: $0) }
                         }
                     }
                     if !model.latest.isEmpty {
-                        Shelf("Ajouts récents", destination: .albums) {
+                        Shelf("Recently Added", destination: .albums) {
                             ForEach(model.latest) { ItemCard(item: $0) }
                         }
                     }
                     if model.rediscover.count > 4 {
-                        Shelf("À redécouvrir") {
+                        Shelf("Rediscover") {
                             ForEach(model.rediscover.dropFirst(4)) { ItemCard(item: $0) }
                         }
                     }
@@ -121,7 +121,7 @@ struct HomeView: View {
                 .padding(.bottom, 30)
             }
         }
-        .navigationTitle("Accueil")
+        .navigationTitle("Home")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { ProfileMenu() }
         }
@@ -130,24 +130,24 @@ struct HomeView: View {
 
     @ViewBuilder private var topPicks: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Top Picks pour vous")
+            SectionHeader(title: "Top Picks for You")
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     if !model.favoriteSample.isEmpty {
-                        TopPickCard(caption: "Mix personnel", title: "Mix Favoris", subtitle: "Tes titres favoris, mélangés",
+                        TopPickCard(caption: "Personal Mix", title: "Favorites Mix", subtitle: "Your favorite songs, shuffled",
                                     collage: model.favoriteSample, sourceId: "mix:favorites") { await playFavorites() }
                     }
                     ForEach(model.topArtists.prefix(5)) { artist in
                         TopPickCard(caption: "Station", title: "Station \(artist.title)",
-                                    subtitle: "Tout \(artist.title), même ce que tu n’as pas",
+                                    subtitle: "All of \(artist.title), even what you don’t have",
                                     artwork: artist, sourceId: "station:\(artist.id)") {
                             await playStation(artist)
                         }
                     }
-                    TopPickCard(caption: "Mix personnel", title: "Mix Découverte", subtitle: "Des morceaux au hasard de ta bibliothèque",
+                    TopPickCard(caption: "Personal Mix", title: "Discovery Mix", subtitle: "Random songs from your library",
                                 collage: Array(model.rediscover.prefix(4)), sourceId: "mix:discovery") { await playDiscovery() }
                     ForEach(model.rediscover.prefix(4)) { album in
-                        TopPickCard(caption: "Redécouvrir", title: album.title, subtitle: album.albumArtistLine,
+                        TopPickCard(caption: "Rediscover", title: album.title, subtitle: album.albumArtistLine,
                                     artwork: album, sourceId: "album:\(Self.publicAlbumId(album))") {
                             await playPublicAlbum(album)
                         }
@@ -163,14 +163,14 @@ struct HomeView: View {
     private func playFavorites() async {
         do {
             let songs = try await MixStore.shared.tracks(for: MixStore.favorites)
-            player.play(songs, shuffle: false, source: "Mix Favoris", sourceId: "mix:favorites")
+            player.play(songs, shuffle: false, source: "Favorites Mix", sourceId: "mix:favorites")
         } catch { ToastCenter.shared.error(error) }
     }
 
     private func playDiscovery() async {
         do {
             let songs = try await MixStore.shared.tracks(for: MixStore.discovery)
-            player.play(songs, shuffle: false, source: "Mix Découverte", sourceId: "mix:discovery")
+            player.play(songs, shuffle: false, source: "Discovery Mix", sourceId: "mix:discovery")
         } catch { ToastCenter.shared.error(error) }
     }
 
@@ -264,7 +264,7 @@ struct TopPickCard: View {
                             .scaleEffect(0.7, anchor: .leading)
                             .frame(width: 13, height: 10)
                     }
-                    Text((isActive ? (isPlaying ? "En lecture" : "En pause") : caption).uppercased())
+                    Text((isActive ? (isPlaying ? "Now Playing" : "Paused") : caption).uppercased())
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.white.opacity(isActive ? 0.95 : 0.7))
                         .contentTransition(.opacity)
@@ -357,10 +357,10 @@ struct ProfileMenu: View {
                         deviceName = ConnectManager.deviceName
                         renaming = true
                     } label: {
-                        Label("Nom de cet appareil…", systemImage: "pencil")
+                        Label("Name of This Device…", systemImage: "pencil")
                     }
                     Button { showDownloads = true } label: {
-                        Label("Téléchargements…", systemImage: "arrow.down.circle")
+                        Label("Downloads…", systemImage: "arrow.down.circle")
                     }
                     Button(role: .destructive) {
                         Task {
@@ -368,21 +368,21 @@ struct ProfileMenu: View {
                             session.logout()
                         }
                     } label: {
-                        Label("Se déconnecter", systemImage: "rectangle.portrait.and.arrow.right")
+                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 }
             }
             Section("\(AppInfo.name) \(AppInfo.version)") {
                 if !ServerFeatures.shared.companion {
                     Link(destination: AppInfo.serverGuide) {
-                        Label("Ajouter le serveur Sonalex (Mix…)", systemImage: "wand.and.stars")
+                        Label("Add the Sonalex Server (Mix…)", systemImage: "wand.and.stars")
                     }
                 }
                 Link(destination: AppInfo.repository) {
-                    Label("Projet sur GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                    Label("Project on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
                 }
                 Link(destination: AppInfo.privacyPolicy) {
-                    Label("Confidentialité", systemImage: "hand.raised")
+                    Label("Privacy", systemImage: "hand.raised")
                 }
             }
         } label: {
@@ -394,12 +394,12 @@ struct ProfileMenu: View {
                             in: Circle())
         }
         .sheet(isPresented: $showDownloads) { DownloadsSettingsView() }
-        .alert("Nom de cet appareil", isPresented: $renaming) {
+        .alert("Name of This Device", isPresented: $renaming) {
             TextField(ConnectManager.defaultDeviceName, text: $deviceName)
-            Button("Annuler", role: .cancel) {}
-            Button("Enregistrer") { ConnectManager.shared.rename(deviceName) }
+            Button("Cancel", role: .cancel) {}
+            Button("Save") { ConnectManager.shared.rename(deviceName) }
         } message: {
-            Text("C’est le nom que voient tes autres appareils (et Atoll) pour choisir où jouer. Laisse vide pour le nom automatique.")
+            Text("The name your other devices (and Atoll) see when choosing where to play. Leave empty for the automatic name.")
         }
     }
 }
@@ -420,14 +420,14 @@ struct DailyArtistsSection: View {
         Group {
             if let artist = picks.artist {
                 VStack(alignment: .leading, spacing: 10) {
-                    SectionHeader(title: "Pour toi aujourd’hui")
+                    SectionHeader(title: "For You Today")
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 14) {
-                            card(artist, caption: "ARTISTE DU JOUR",
-                                 subtitle: artist.genres?.first.map { $0.capitalized } ?? "Dans ta bibliothèque")
+                            card(artist, caption: "ARTIST OF THE DAY",
+                                 subtitle: artist.genres?.first.map { $0.capitalized } ?? "In your library")
                             if let discover = picks.discover {
-                                card(discover, caption: "À DÉCOUVRIR",
-                                     subtitle: picks.because.map { "Dans la veine de \($0)" } ?? "Nouveau pour toi")
+                                card(discover, caption: "TO DISCOVER",
+                                     subtitle: picks.because.map { "In the vein of \($0)" } ?? "New to you")
                             }
                         }
                         .scrollTargetLayout()
@@ -515,14 +515,14 @@ struct MomentFavoriteCard: View {
     var body: some View {
         Button {
             if isCurrent { player.togglePlayPause() }
-            else { player.play([track], source: "Ton son du moment", autoplay: true) }
+            else { player.play([track], source: "Your Song of the Moment", autoplay: true) }
         } label: {
             HStack(spacing: 16) {
                 ArtworkView(item: track, points: 110, cornerRadius: 10)
                     .frame(width: 110, height: 110)
                     .shadow(color: .black.opacity(0.25), radius: 10, y: 5)
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Ton son du moment", systemImage: "flame.fill")
+                    Label("Your Song of the Moment", systemImage: "flame.fill")
                         .font(.caption.weight(.bold))
                         .textCase(.uppercase)
                         .foregroundStyle(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
@@ -535,7 +535,7 @@ struct MomentFavoriteCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     if count > 1 {
-                        Text("Choisi \(count) fois cette semaine")
+                        Text("Picked \(count) times this week")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }

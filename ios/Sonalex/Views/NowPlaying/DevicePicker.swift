@@ -53,13 +53,13 @@ struct DevicePickerSheet: View {
                                     .frame(width: 36)
                                     .foregroundStyle(device.id == connect.activeId ? Color.appAccent : .primary)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(device.id == connect.myId ? "Cet appareil" : device.name)
+                                    Text(device.id == connect.myId ? "This Device" : device.name)
                                         .foregroundStyle(.primary)
                                     if device.id == connect.myId {
                                         Text(device.name).font(.caption).foregroundStyle(.secondary)
                                     }
                                     if device.id == connect.activeId {
-                                        Label("En lecture", systemImage: "waveform")
+                                        Label("Now Playing", systemImage: "waveform")
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(Color.appAccent)
                                     }
@@ -75,22 +75,22 @@ struct DevicePickerSheet: View {
                         .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("Lire sur")
+                    Text("Play On")
                 } footer: {
-                    Text("Tes appareils connectés à Musique : la lecture passe de l’un à l’autre au même endroit du morceau, et chacun peut piloter celui qui joue.")
+                    Text("Your devices signed in to Sonalex: playback moves from one to another at the same point in the song, and each one can control the one playing.")
                 }
 
                 #if !targetEnvironment(macCatalyst)
-                Section("Sortie audio de cet appareil") {
+                Section("This Device’s Audio Output") {
                     HStack(spacing: 14) {
                         AirPlayButton()
                             .frame(width: 36, height: 36)
-                        Text("AirPlay et Bluetooth")
+                        Text("AirPlay & Bluetooth")
                     }
                 }
                 #endif
             }
-            .navigationTitle("Appareils")
+            .navigationTitle("Devices")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("OK") { dismiss() } }
@@ -106,7 +106,7 @@ struct RemotePlaybackBadge: View {
 
     var body: some View {
         if connect.isRemote, let device = connect.activeDevice {
-            Label("Lecture sur \(device.name)", systemImage: device.systemImage)
+            Label("Playing on \(device.name)", systemImage: device.systemImage)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(color)
                 .lineLimit(1)

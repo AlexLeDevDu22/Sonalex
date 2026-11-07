@@ -251,7 +251,7 @@ final class OfflineStore {
         // Already here automatically: now kept for good.
         for item in items where entries[item.id]?.manual == false { entries[item.id]?.manual = true }
         save()
-        if !songs.isEmpty { ToastCenter.shared.show("Téléchargement de \(Format.songCount(songs.count))…", systemImage: "arrow.down.circle") }
+        if !songs.isEmpty { ToastCenter.shared.show("Downloading \(Format.songCount(songs.count))…", systemImage: "arrow.down.circle") }
         work()
     }
 
@@ -627,23 +627,23 @@ struct DownloadsSettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Téléchargement automatique", isOn: $store.autoEnabled)
-                    Picker("Place maximale", selection: $store.limitGB) {
+                    Toggle("Automatic Downloads", isOn: $store.autoEnabled)
+                    Picker("Maximum Space", selection: $store.limitGB) {
                         ForEach([1.0, 2, 5, 10, 20], id: \.self) { Text("\(Int($0)) Go").tag($0) }
                     }
                 } footer: {
-                    Text("Tes favoris que tu écoutes le plus et que tu passes rarement sont gardés sur cet appareil (en Wi-Fi), ainsi que ceux que tu écoutes jusqu’au bout — sans les retélécharger. Ils se lancent tout de suite, même hors connexion.")
+                    Text("The favorites you play the most and rarely skip are kept on this device (over Wi-Fi), as well as the ones you listen to all the way through — without downloading them again. They start instantly, even offline.")
                 }
-                Section("Sur cet appareil") {
-                    LabeledContent("Sons", value: "\(store.entries.count)")
-                    LabeledContent("Espace utilisé", value: ByteCountFormatter.string(fromByteCount: store.usedBytes, countStyle: .file))
+                Section("On This Device") {
+                    LabeledContent("Songs", value: "\(store.entries.count)")
+                    LabeledContent("Storage Used", value: ByteCountFormatter.string(fromByteCount: store.usedBytes, countStyle: .file))
                     if !store.downloading.isEmpty {
-                        LabeledContent("En cours", value: "\(store.downloading.count)")
+                        LabeledContent("In Progress", value: "\(store.downloading.count)")
                     }
-                    Button("Tout supprimer de cet appareil", role: .destructive) { store.removeAll() }
+                    Button("Remove All from This Device", role: .destructive) { store.removeAll() }
                 }
             }
-            .navigationTitle("Téléchargements")
+            .navigationTitle("Downloads")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("OK") { dismiss() } } }
         }
     }
