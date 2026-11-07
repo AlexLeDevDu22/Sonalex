@@ -28,7 +28,7 @@ ENV_FILE="$BACKEND/.env"
 UNIT_DIR="$HOME/.config/systemd/user"
 CADDY="$HOME/.local/bin/caddy"
 # Names of the services before the app was called Sonalex: replaced by the new ones.
-OLD_UNITS=(musique-api.service musique-proxy.service hosted-spotify-refresh.service hosted-spotify-refresh.timer)
+OLD_UNITS=(musique-api.service musique-proxy.service)
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -54,6 +54,7 @@ load_settings() {
   PUBLIC_PORT=$(setting SONALEX_PUBLIC_PORT 8096)
   JELLYFIN_PORT=$(setting SONALEX_JELLYFIN_PORT 8097)
   SERVER_PORT=$(setting SONALEX_SERVER_PORT 8098)
+  DOMAIN=$(setting SONALEX_DOMAIN "")
   case "$(setting SONALEX_SPOTIFY_SYNC 0)" in 1|true|yes|on) SPOTIFY_SYNC=1 ;; *) SPOTIFY_SYNC=0 ;; esac
   [ "$PROXY" = caddy ] || [ "$PROXY" = none ] || die "SONALEX_PROXY must be caddy or none (not \"$PROXY\")"
 }
@@ -160,6 +161,39 @@ do_services() {
   render sonalex-server.service "$UNIT_DIR/sonalex-server.service"
   if [ "$PROXY" = caddy ]; then
     render Caddyfile "$DATA_DIR/config/Caddyfile"
+    if [ -n "$DOMAIN" ]; then
+      # Public HTTPS: Caddy gets a Let's Encrypt certificate for $DOMAIN on 80/443
+      # (so it needs to reach them: setcap on the binary, or ports forwarded to it).
+      sed -i '/^[[:space:]]*auto_https off$/d' "$DATA_DIR/config/Caddyfile"
+      cat >> "$DATA_DIR/config/Caddyfile" <<EOF
+
+$DOMAIN {
+	# A browser opening the bare domain (root GET for HTML) lands on the admin page;
+	# everything else (the app, API calls, Jellyfin's own paths) goes to Jellyfin.
+	@browserroot {
+		path /
+		method GET
+		header Accept *text/html*
+	}
+	handle @browserroot {
+		redir * /sonalex/admin
+	}
+	@server path /sonalex/* /musique/*
+	handle @server {
+		uri strip_prefix /sonalex
+		uri strip_prefix /musique
+		reverse_proxy 127.0.0.1:$SERVER_PORT {
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy 127.0.0.1:$JELLYFIN_PORT {
+			flush_interval -1
+		}
+	}
+}
+EOF
+    fi
     "$CADDY" validate --config "$DATA_DIR/config/Caddyfile" --adapter caddyfile >/dev/null 2>&1 \
       || die "Invalid Caddyfile: $DATA_DIR/config/Caddyfile"
     render sonalex-proxy.service "$UNIT_DIR/sonalex-proxy.service"

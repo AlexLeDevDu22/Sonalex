@@ -99,8 +99,8 @@ systemctl --user restart sonalex-server     # after changing backend/.env
 ```
 
 The service files are generated in `~/.config/systemd/user/` from `deploy/templates/`: edit the
-templates, then `bash deploy/setup.sh services`. Services from before the app was renamed
-(`musique-api`, `musique-proxy`, `hosted-spotify-refresh`) are replaced automatically.
+templates, then `bash deploy/setup.sh services`. Services from before the app was renamed are
+replaced automatically.
 
 ## Updating
 

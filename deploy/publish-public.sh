@@ -10,10 +10,8 @@ set -euo pipefail
 
 DEST="${1:?usage: bash deploy/publish-public.sh <empty folder>}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-# The Pi's own files: the to-do list, and the services from before the new name (they point to
-# its home folder; deploy/setup.sh replaces them, then they can go).
-PERSONAL=(backend/todo.md backend/utils/redownload_song.py deploy/Caddyfile deploy/musique-api.service deploy/musique-proxy.service
-          deploy/hosted-spotify-refresh.service deploy/hosted-spotify-refresh.timer)
+# The Pi's own files (the to-do list and a personal maintenance script), kept out of the public repo.
+PERSONAL=(backend/todo.md backend/utils/redownload_song.py)
 
 [ ! -e "$DEST" ] || [ -z "$(ls -A "$DEST")" ] || { echo "$DEST isn't empty"; exit 1; }
 mkdir -p "$DEST"
