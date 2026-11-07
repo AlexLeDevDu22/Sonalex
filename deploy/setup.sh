@@ -168,6 +168,14 @@ do_services() {
       cat >> "$DATA_DIR/config/Caddyfile" <<EOF
 
 $DOMAIN {
+	# Security headers (this block is HTTPS only).
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
 	# A browser opening the bare domain (root GET for HTML) lands on the admin page;
 	# everything else (the app, API calls, Jellyfin's own paths) goes to Jellyfin.
 	@browserroot {

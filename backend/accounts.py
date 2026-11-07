@@ -181,10 +181,24 @@ def _check_name(name: str) -> str:
     return name
 
 
+def _is_deezer_shortlink(url: str) -> bool:
+    """A genuine Deezer short link, by hostname (not a substring: else an attacker could send
+    https://internal-host/?x=deezer.page.link and make us fetch an arbitrary address — SSRF)."""
+    from urllib.parse import urlparse
+
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return host in ("deezer.page.link", "link.deezer.com") or host.endswith((".deezer.page.link", ".link.deezer.com"))
+
+
 def deezer_profile(text: str) -> dict:
     """{"id", "name"} of a public Deezer profile, from its link or its number."""
     text = (text or "").strip()
-    if text.startswith(("http://", "https://")) and ("deezer.page.link" in text or "link.deezer.com" in text):
+    if _is_deezer_shortlink(text):
+        # Only a real Deezer short-link host is ever fetched; the resolved URL is then just
+        # parsed for the numeric profile id (never fetched), so a surprise redirect is harmless.
         try:
             text = requests.head(text, allow_redirects=True, timeout=10).url
         except requests.RequestException:

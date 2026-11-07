@@ -34,7 +34,9 @@ from .streamer import STREAMER
 from config import ONLINE, SPOTIFY_SYNC  # noqa: E402
 
 VERSION = "1.0"
-app = FastAPI(title="Sonalex server", version=VERSION)
+# No public API browser (/docs, /redoc, /openapi.json): this server is reachable from the internet
+# and there's nothing to gain from advertising its routes.
+app = FastAPI(title="Sonalex server", version=VERSION, docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(community.router)
 
 _lyrics = TTLCache(ttl=24 * 3600)

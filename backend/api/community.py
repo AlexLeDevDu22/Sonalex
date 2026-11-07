@@ -29,7 +29,31 @@ from .auth import Auth, admin, auth
 from .connect import HUB
 
 router = APIRouter()
-_attempts: dict[str, list[float]] = {}  # IP → sign-up requests (one hour)
+_attempts: dict[str, list[float]] = {}        # IP → sign-up requests (one hour)
+_login_attempts: dict[str, list[float]] = {}  # IP → admin sign-in attempts (fifteen minutes)
+
+
+def _client_ip(request: Request) -> str:
+    """The real client, not the reverse proxy. The trusted proxy appends the peer to
+    X-Forwarded-For, so the last hop is the client as the proxy saw it (a spoofed value
+    the client sent sits before it and is ignored)."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[-1].strip()
+    return request.client.host if request.client else "?"
+
+
+def _rate_limit(store: dict, key: str, limit: int, window: float) -> bool:
+    """False when `key` has already reached `limit` events within `window` seconds."""
+    now = time.time()
+    recent = [t for t in store.get(key, []) if now - t < window]
+    if len(store) > 4096:
+        store.clear()  # the apps don't need a long-lived table; drop it if it ever grows
+    store[key] = recent
+    if len(recent) >= limit:
+        return False
+    recent.append(now)
+    return True
 
 
 def _error(e: Exception, status: int = 400):
@@ -74,11 +98,8 @@ class SignUpBody(BaseModel):
 async def account_request(body: SignUpBody, request: Request):
     if not SIGNUPS:
         raise HTTPException(403, "This server doesn't take new users.")
-    ip = request.client.host if request.client else "?"
-    recent = [t for t in _attempts.get(ip, []) if time.time() - t < 3600]
-    if len(recent) >= 5:
+    if not _rate_limit(_attempts, _client_ip(request), 5, 3600):
         raise HTTPException(429, "Too many requests, try again later.")
-    _attempts[ip] = recent + [time.time()]
     if body.provider in ("spotify", "deezer") and not SPOTIFY_SYNC:
         body.provider = "none"
     try:
@@ -307,8 +328,10 @@ class LoginBody(BaseModel):
 
 
 @router.post("/api/admin/login")
-def admin_login(body: LoginBody):
+def admin_login(body: LoginBody, request: Request):
     """The admin page signs in with a Jellyfin administrator's account."""
+    if not _rate_limit(_login_attempts, _client_ip(request), 10, 900):
+        raise HTTPException(429, "Too many attempts. Wait a few minutes.")
     r = requests.post(f"{JELLYFIN_URL}/Users/AuthenticateByName", timeout=15, json={"Username": body.username, "Pw": body.password},
                       headers={"Authorization": 'MediaBrowser Client="Sonalex admin", Device="Web", DeviceId="sonalex-admin", Version="1.0"'})
     if r.status_code != 200:
