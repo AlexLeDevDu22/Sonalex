@@ -184,7 +184,7 @@ $DOMAIN {
 		header Accept *text/html*
 	}
 	handle @browserroot {
-		redir * /sonalex/admin
+		redir * /sonalex/
 	}
 	@server path /sonalex/* /musique/*
 	handle @server {

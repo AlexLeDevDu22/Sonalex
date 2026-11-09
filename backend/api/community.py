@@ -474,3 +474,11 @@ async def admin_overview(a: Auth = Depends(admin)):
 @router.get("/admin/")
 def admin_page():
     return FileResponse(Path(__file__).parent / "admin.html", media_type="text/html")
+
+
+@router.get("/")
+@router.get("/app")
+@router.get("/app/")
+def web_app():
+    """The user web app (responsive Apple-Music-like player + remote). Any signed-in user."""
+    return FileResponse(Path(__file__).parent / "app.html", media_type="text/html")

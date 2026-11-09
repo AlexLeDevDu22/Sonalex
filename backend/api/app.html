@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0910">
+<title>Sonalex</title>
+<style>
+  :root {
+    --bg: #0a0a0b; --panel: #161618; --panel-2: #1a1a1d; --panel2: #232327; --line: #2a2a2f; --text: #f5f5f7; --dim: #98989f;
+    --accent: #9a6cff; --accent2: #b690ff; --ok: #3ccf8e; --warn: #ffb547; --bad: #ff5c7a;
+    --grad: linear-gradient(160deg, #8f6bff, #6f54d8);
+    --radius: 12px; --shadow: 0 10px 30px -18px rgba(0,0,0,.8); --shadow-sm: 0 2px 10px -6px rgba(0,0,0,.55);
+    --glow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+    --bar-h: 80px; --nav-w: 240px;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #ffffff; --panel: #ffffff; --panel-2: #fafafa; --panel2: #f0f0f3; --line: #e6e6ea; --text: #1d1d1f; --dim: #6e6e76;
+      --shadow: 0 10px 30px -20px rgba(0,0,0,.22); --shadow-sm: 0 2px 10px -7px rgba(0,0,0,.16); color-scheme: light; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { margin: 0; color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, sans-serif; -webkit-font-smoothing: antialiased;
+    letter-spacing: -.005em; background: var(--bg); overflow: hidden; }
+  ::selection { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--dim) 32%, transparent); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; }
+  button { font: inherit; color: var(--text); border: 0; background: none; cursor: pointer; }
+  input { font: inherit; }
+
+  /* ---------- Shell ---------- */
+  #shell { display: grid; grid-template-columns: var(--nav-w) 1fr; grid-template-rows: 1fr var(--bar-h); height: 100dvh; }
+  nav.side { grid-row: 1 / 3; grid-column: 1; border-right: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+    background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(16px); padding: 18px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 6px 10px 16px; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 11px; background: var(--grad); display: grid; place-items: center; color: #fff; font-size: 20px; flex: none;
+    box-shadow: 0 4px 12px -6px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.18); }
+  .brand b { font-size: 18px; letter-spacing: -.01em; }
+  .navlink { display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: 12px; color: var(--dim); font-weight: 600; font-size: 14.5px; transition: background .15s, color .15s; }
+  .navlink svg { width: 21px; height: 21px; flex: none; }
+  .navlink:hover { background: color-mix(in srgb, var(--panel2) 60%, transparent); color: var(--text); }
+  .navlink.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+  .navlink.on svg { color: var(--accent2); }
+  .side .sep { height: 1px; background: color-mix(in srgb, var(--line) 60%, transparent); margin: 12px 8px; }
+  .side .foot { margin-top: auto; padding: 10px; color: var(--dim); font-size: 12.5px; display: flex; align-items: center; gap: 9px; }
+
+  main.content { grid-column: 2; grid-row: 1; overflow-y: auto; scroll-behavior: smooth; }
+  .topbar { position: sticky; top: 0; z-index: 4; display: flex; align-items: center; gap: 12px; padding: 14px 26px;
+    background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: saturate(160%) blur(16px); }
+  .topbar .nav-btns { display: flex; gap: 6px; }
+  .iconbtn { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--panel2) 70%, transparent); color: var(--text); border: 1px solid var(--line); }
+  .iconbtn:hover { filter: brightness(1.12); }
+  .iconbtn svg { width: 19px; height: 19px; }
+  .search { flex: 1; max-width: 460px; display: flex; align-items: center; gap: 9px; padding: 9px 14px; border-radius: 12px; background: color-mix(in srgb, var(--panel2) 70%, transparent); border: 1px solid var(--line); }
+  .search:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: var(--glow); }
+  .search input { border: 0; background: none; color: var(--text); outline: none; width: 100%; }
+  .search svg { width: 18px; height: 18px; color: var(--dim); flex: none; }
+  .me { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+
+  .page { padding: 10px 26px 34px; max-width: 1180px; }
+  h1.title { font-size: 28px; letter-spacing: -.02em; margin: 14px 2px 8px; }
+  h2.sec { display: flex; align-items: baseline; gap: 10px; font-size: 20px; letter-spacing: -.01em; margin: 30px 2px 14px; }
+  h2.sec .more { margin-left: auto; font-size: 13px; color: var(--accent2); font-weight: 600; cursor: pointer; }
+  .muted { color: var(--dim); }
+
+  /* cards grid */
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .tile { cursor: pointer; }
+  .tile .cover { position: relative; width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: var(--panel2); box-shadow: var(--shadow-sm); }
+  .tile .cover img { width: 100%; height: 100%; object-fit: cover; }
+  .tile.round .cover { border-radius: 50%; }
+  .tile .cover .ph { position: absolute; inset: 0; display: grid; place-items: center; color: color-mix(in srgb, var(--dim) 70%, transparent); }
+  .tile .cover .ph svg { width: 38%; height: 38%; }
+  .tile .play-fab { position: absolute; right: 9px; bottom: 9px; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; opacity: 0; transform: translateY(6px); transition: .18s; box-shadow: 0 6px 16px -6px rgba(0,0,0,.6); }
+  .tile:hover .play-fab { opacity: 1; transform: none; }
+  .tile .nm { font-weight: 600; font-size: 14px; margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .sub { color: var(--dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* track list */
+  .rows { display: flex; flex-direction: column; }
+  .trow { display: flex; align-items: center; gap: 13px; padding: 8px 10px; border-radius: 11px; cursor: pointer; }
+  .trow:hover { background: color-mix(in srgb, var(--panel2) 70%, transparent); }
+  .trow.playing { color: var(--accent2); }
+  .trow .idx { width: 22px; text-align: right; color: var(--dim); font-size: 13px; flex: none; font-variant-numeric: tabular-nums; }
+  .trow .art { width: 44px; height: 44px; border-radius: 9px; object-fit: cover; background: var(--panel2); flex: none; box-shadow: 0 3px 10px -5px rgba(0,0,0,.5); }
+  .trow .t { flex: 1; min-width: 0; }
+  .trow .t div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trow .t .nm { font-weight: 550; }
+  .trow .t .a { color: var(--dim); font-size: 13px; }
+  .trow .dur { color: var(--dim); font-size: 13px; font-variant-numeric: tabular-nums; flex: none; }
+  .trow .heart { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--dim); opacity: 0; }
+  .trow:hover .heart { opacity: 1; }
+  .trow .heart.on { color: var(--bad); opacity: 1; }
+  .trow .heart svg { width: 18px; height: 18px; }
+  .trow .more { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--dim); opacity: 0; }
+  .trow:hover .more { opacity: 1; }
+
+  /* detail header */
+  .dhead { display: flex; gap: 26px; align-items: flex-end; margin: 14px 2px 10px; }
+  .dhead .cover { width: 220px; height: 220px; border-radius: 18px; object-fit: cover; background: var(--panel2); box-shadow: var(--shadow); flex: none; }
+  .dhead.round .cover { border-radius: 50%; }
+  .dhead .meta .kind { color: var(--accent2); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .dhead .meta h1 { font-size: 34px; letter-spacing: -.02em; margin: 6px 0 8px; }
+  .dhead .meta .sub { color: var(--dim); }
+  .dhead .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 12px; font-weight: 650; background: color-mix(in srgb, var(--panel2) 85%, transparent); border: 1px solid var(--line); }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn.primary:hover { filter: none; background: color-mix(in srgb, var(--accent) 88%, #fff); }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* now-playing bar */
+  .npbar { grid-column: 1 / 3; grid-row: 2; display: flex; align-items: center; gap: 16px; padding: 0 20px;
+    border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent); background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(20px); }
+  .npbar .np-track { display: flex; align-items: center; gap: 12px; width: 280px; min-width: 0; cursor: pointer; }
+  .npbar .np-track img { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--panel2); flex: none; box-shadow: 0 4px 12px -6px rgba(0,0,0,.6); }
+  .npbar .np-track .t { min-width: 0; }
+  .npbar .np-track .t div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .npbar .np-track .nm { font-weight: 600; font-size: 14px; }
+  .npbar .np-track .a { color: var(--dim); font-size: 12.5px; }
+  .npbar .controls { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; max-width: 640px; margin: 0 auto; }
+  .npbar .btns { display: flex; align-items: center; gap: 20px; }
+  .npbar .btns button { color: var(--text); display: grid; place-items: center; }
+  .npbar .btns button svg { width: 20px; height: 20px; }
+  .npbar .btns .pp { width: 42px; height: 42px; border-radius: 50%; background: var(--text); color: var(--bg); }
+  .npbar .btns .pp svg { width: 20px; height: 20px; }
+  .npbar .btns button.dim { color: var(--dim); }
+  .npbar .btns button.dim.act { color: var(--accent2); }
+  .npbar .progress { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .npbar .progress .time { color: var(--dim); font-size: 11.5px; font-variant-numeric: tabular-nums; width: 38px; text-align: center; flex: none; }
+  .seek { flex: 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--dim) 28%, transparent); position: relative; cursor: pointer; }
+  .seek .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+  .seek .knob { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,.4); opacity: 0; transition: opacity .15s; }
+  .seek:hover .knob { opacity: 1; }
+  .npbar .right { width: 280px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+  .npbar .right button { color: var(--dim); display: grid; place-items: center; }
+  .npbar .right button:hover { color: var(--text); }
+  .npbar .right button.act { color: var(--accent2); }
+  .npbar .right button svg { width: 19px; height: 19px; }
+  .vol { width: 92px; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--dim) 28%, transparent); position: relative; cursor: pointer; }
+  .vol .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--text); }
+
+  .devbadge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 99px; font-size: 12.5px; font-weight: 600; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  .devbadge svg { width: 15px; height: 15px; }
+
+  /* sheets / dialogs */
+  dialog { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); color: var(--text); width: min(460px, 94vw); padding: 0; box-shadow: var(--shadow); }
+  dialog[open] { animation: pop .22s cubic-bezier(.2,.8,.2,1); }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+  dialog::backdrop { background: color-mix(in srgb, #06040c 60%, transparent); backdrop-filter: blur(6px); }
+  .dlg { padding: 20px 22px 22px; }
+  .dlg h3 { margin: 0 0 14px; font-size: 18px; }
+  .dlg .opt { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; cursor: pointer; }
+  .dlg .opt:hover { background: color-mix(in srgb, var(--panel2) 70%, transparent); }
+  .dlg .opt .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--panel2) 80%, transparent); flex: none; }
+  .dlg .opt.active { color: var(--accent2); }
+
+  /* login */
+  .login-wrap { height: 100dvh; display: grid; place-items: center; padding: 20px; }
+  .login { width: min(380px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 30px 28px 26px; box-shadow: var(--shadow); }
+  .login .logo { width: 56px; height: 56px; border-radius: 16px; background: var(--grad); display: grid; place-items: center; color: #fff; font-size: 28px; margin: 0 auto 16px; box-shadow: 0 8px 22px -12px rgba(0,0,0,.6); }
+  .login h1 { text-align: center; font-size: 22px; margin: 0 0 4px; }
+  .login .srv { text-align: center; color: var(--dim); font-size: 13px; margin-bottom: 18px; }
+  .login input { width: 100%; padding: 13px 15px; border-radius: 13px; border: 1px solid var(--line); background: color-mix(in srgb, var(--panel2) 60%, transparent); color: var(--text); margin-top: 11px; outline: none; }
+  .login input:focus { border-color: color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: var(--glow); }
+  .login button.submit { width: 100%; margin-top: 18px; padding: 13px; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; }
+  .login .err { color: var(--bad); font-size: 13px; margin-top: 11px; min-height: 18px; text-align: center; }
+
+  .empty { color: var(--dim); padding: 40px 10px; text-align: center; }
+  .spin { width: 26px; height: 26px; border: 3px solid color-mix(in srgb, var(--dim) 40%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: rot .7s linear infinite; margin: 50px auto; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  /* mobile bottom nav */
+  nav.bottom { display: none; }
+  @media (max-width: 820px) {
+    :root { --bar-h: 64px; }
+    #shell { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
+    nav.side { display: none; }
+    main.content { grid-column: 1; grid-row: 1; }
+    .page { padding: 6px 16px 24px; }
+    .topbar { padding: 12px 16px; }
+    .npbar { grid-column: 1; grid-row: 2; padding: 0 12px; gap: 10px; }
+    .npbar .np-track { width: auto; flex: 1; }
+    .npbar .controls { display: none; }
+    .npbar .right { width: auto; }
+    .npbar .right .vol, .npbar .right .shuffle, .npbar .right .repeat { display: none; }
+    .npbar .np-pp { display: grid !important; width: 40px; height: 40px; border-radius: 50%; background: var(--text); color: var(--bg); place-items: center; flex: none; }
+    nav.bottom { display: flex; grid-column: 1; grid-row: 3; border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent); background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(16px); padding: 8px 4px calc(8px + env(safe-area-inset-bottom)); }
+    nav.bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--dim); font-size: 10.5px; font-weight: 600; padding: 2px; }
+    nav.bottom a.on { color: var(--accent2); }
+    nav.bottom a svg { width: 23px; height: 23px; }
+    .dhead { flex-direction: column; align-items: center; text-align: center; gap: 16px; }
+    .dhead .cover { width: 180px; height: 180px; }
+    .dhead .meta h1 { font-size: 26px; }
+    .grid { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    h1.title { font-size: 24px; }
+  }
+  .np-pp { display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+"use strict";
+
+// ---------- constants & helpers ----------
+const BASE = location.pathname.replace(/\/(app)?\/*$/, "");               // e.g. "/sonalex"
+const WSBASE = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + BASE;
+const COLORS = ["#7c5cff","#ff5c9e","#3ccf8e","#ffb547","#4cc3ff","#b078ff","#ff7a59","#5ce0d0"];
+const FIELDS = "Genres,DateCreated,ChildCount,ParentId";
+const $ = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstChild; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const color = (name) => COLORS[[...String(name || "?")].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+let sess = null;
+try { sess = JSON.parse(localStorage.getItem("sonalex.web.session") || "null"); } catch {}
+
+function deviceId() {
+  let d = localStorage.getItem("sonalex.web.device");
+  if (!d) { d = "web-" + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)); localStorage.setItem("sonalex.web.device", d); }
+  return d;
+}
+const authHeader = () => sess ? { Authorization: `MediaBrowser Token="${sess.token}"` } : {};
+
+// Jellyfin (origin root) and Sonalex (BASE) fetch wrappers.
+async function jf(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...authHeader(), ...(opts.headers || {}) } });
+  if (r.status === 401) { logout(); throw new Error("Session expirée"); }
+  if (!r.ok) throw new Error("Erreur " + r.status);
+  const ct = r.headers.get("content-type") || "";
+  return r.status === 204 || !ct.includes("json") ? null : r.json();
+}
+const sx = (path, opts) => jf(BASE + path, opts);
+
+function jfItems(q) {
+  const base = { userId: sess.userId, Recursive: "true", Fields: FIELDS, ImageTypeLimit: "1", EnableImageTypes: "Primary", EnableTotalRecordCount: "false" };
+  const p = new URLSearchParams({ ...base, ...q });
+  return jf("/Items?" + p.toString()).then((r) => (r.Items || []).map(track));
+}
+
+// Normalize a Jellyfin item.
+function track(i) {
+  return {
+    id: i.Id, name: i.Name || "Sans titre", type: i.Type,
+    artists: (i.ArtistItems || []).map((a) => ({ id: a.Id, name: a.Name })),
+    artistLine: (i.Artists || []).join(", ") || i.AlbumArtist || (i.Type === "MusicArtist" ? "" : ""),
+    album: i.Album, albumId: i.AlbumId, albumTag: i.AlbumPrimaryImageTag,
+    primaryTag: (i.ImageTags || {}).Primary, type: i.Type,
+    duration: (i.RunTimeTicks || 0) / 1e7, fav: !!(i.UserData || {}).IsFavorite,
+    childCount: i.ChildCount, year: i.ProductionYear, index: i.IndexNumber,
+  };
+}
+
+function artUrl(it, px) {
+  if (!it || !sess) return "";
+  px = Math.round((px || 100) * 2);
+  const key = `fillWidth=${px}&fillHeight=${px}&quality=90&ApiKey=${encodeURIComponent(sess.token)}`;
+  if ((it.type === "Audio" || !it.type) && it.albumId && it.albumTag) return `/Items/${it.albumId}/Images/Primary?${key}&tag=${it.albumTag}`;
+  if (it.primaryTag) return `/Items/${it.id}/Images/Primary?${key}&tag=${it.primaryTag}`;
+  if (it.albumId && it.albumTag) return `/Items/${it.albumId}/Images/Primary?${key}&tag=${it.albumTag}`;
+  if (["MusicAlbum", "Playlist", "MusicArtist"].includes(it.type)) return `/Items/${it.id}/Images/Primary?${key}`;
+  return "";
+}
+function audioUrl(id) {
+  const p = new URLSearchParams({
+    UserId: sess.userId, DeviceId: deviceId(), ApiKey: sess.token,
+    PlaySessionId: player.psid, MaxStreamingBitrate: "140000000",
+    Container: "mp3,aac,m4a|aac,m4b|aac,flac,alac,m4a|alac,wav,aiff,webma,webm|opus,ogg|opus",
+    TranscodingContainer: "ts", TranscodingProtocol: "hls", AudioCodec: "aac",
+  });
+  return `/Audio/${id}/universal?` + p.toString();
+}
+
+// ---------- icons ----------
+const ICON = {
+  note: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V6l10-2v11"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="15" r="3"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>',
+  lib: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.8 5 6.2 5 8.3 5 9.7 6.3 12 8.7 14.3 6.3 15.7 5 17.8 5 21.2 5 23 8.5 21.3 12 19 16.4 12 21 12 21z"/></svg>',
+  heartf: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.6-9.3-9C1 8.5 2.8 5 6.2 5 8.3 5 9.7 6.3 12 8.7 14.3 6.3 15.7 5 17.8 5 21.2 5 23 8.5 21.3 12 19 16.4 12 21 12 21z"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  prev: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14h2V5zM20 5l-9 7 9 7z"/></svg>',
+  next: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 5v14h-2V5zM4 5l9 7-9 7z"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>',
+  repeat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+  device: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  vol: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9v6h4l5 5V4L8 9z"/><path d="M16 8a5 5 0 0 1 0 8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+};
+
+// ---------- auth ----------
+function logout() {
+  sess = null;
+  localStorage.removeItem("sonalex.web.session");
+  try { connect.close(); } catch {}
+  try { player.stop(); } catch {}
+  renderLogin();
+}
+
+async function renderLogin(error = "") {
+  let serverName = "Sonalex";
+  try { const info = await (await fetch("/System/Info/Public")).json(); serverName = info.ServerName || serverName; } catch {}
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+  const form = $(`<form class="login-wrap"><div class="login">
+    <div class="logo">♪</div>
+    <h1>Sonalex</h1>
+    <div class="srv">${esc(serverName)}</div>
+    <input name="u" placeholder="Nom d'utilisateur" autocomplete="username" autocapitalize="none" autocorrect="off">
+    <input name="p" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <button class="submit" type="submit">Se connecter</button>
+    <div class="err">${esc(error)}</div>
+  </div></form>`);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const u = form.u.value.trim(), p = form.p.value;
+    const btn = form.querySelector(".submit"); btn.disabled = true; btn.textContent = "Connexion…";
+    try {
+      const r = await fetch("/Users/AuthenticateByName", {
+        method: "POST",
+        headers: { "Content-Type": "application/json",
+          Authorization: `MediaBrowser Client="Sonalex Web", Device="Navigateur", DeviceId="${deviceId()}", Version="1.0"` },
+        body: JSON.stringify({ Username: u, Pw: p }),
+      });
+      if (r.status === 401) throw new Error("Nom d'utilisateur ou mot de passe incorrect");
+      if (!r.ok) throw new Error("Connexion impossible (" + r.status + ")");
+      const d = await r.json();
+      sess = { token: d.AccessToken, userId: d.User.Id, userName: d.User.Name,
+               isAdmin: !!(d.User.Policy || {}).IsAdministrator, serverName };
+      localStorage.setItem("sonalex.web.session", JSON.stringify(sess));
+      boot();
+    } catch (err) {
+      btn.disabled = false; btn.textContent = "Se connecter";
+      form.querySelector(".err").textContent = err.message;
+    }
+  });
+  root.appendChild(form);
+}
+
+// ---------- app shell ----------
+const NAV = [
+  { id: "home", label: "Accueil", icon: ICON.home },
+  { id: "search", label: "Recherche", icon: ICON.search },
+  { id: "library", label: "Bibliothèque", icon: ICON.lib },
+  { id: "favorites", label: "Favoris", icon: ICON.heart },
+];
+
+function renderShell() {
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+  const shell = $(`<div id="shell">
+    <nav class="side">
+      <div class="brand"><div class="logo">♪</div><b>Sonalex</b></div>
+      ${NAV.map((n) => `<a class="navlink" data-nav="${n.id}" href="#/${n.id}">${n.icon}<span>${n.label}</span></a>`).join("")}
+      <div class="sep"></div>
+      <div id="side-playlists"></div>
+      <div class="foot">${avatarHTML(sess.userName, 26)}<span>${esc(sess.userName)}</span></div>
+    </nav>
+    <main class="content">
+      <div class="topbar">
+        <div class="nav-btns"><button class="iconbtn" onclick="history.back()" title="Retour">${chev("l")}</button></div>
+        <label class="search">${ICON.search}<input id="q" placeholder="Rechercher titres, albums, artistes…"></label>
+        <div class="me">
+          <button class="iconbtn devbtn" title="Appareils">${ICON.device}</button>
+          ${sess.isAdmin ? `<a class="iconbtn" href="${BASE}/admin" title="Admin">${gear()}</a>` : ""}
+          <button class="iconbtn" id="meBtn" title="${esc(sess.userName)}">${avatarHTML(sess.userName, 30)}</button>
+        </div>
+      </div>
+      <div id="view"></div>
+    </main>
+    <div class="npbar" id="npbar"></div>
+    <nav class="bottom">
+      ${NAV.map((n) => `<a data-nav="${n.id}" href="#/${n.id}">${n.icon}<span>${n.label}</span></a>`).join("")}
+    </nav>
+  </div>`);
+  root.appendChild(shell);
+
+  const q = shell.querySelector("#q");
+  q.addEventListener("input", debounce(() => { if (location.hash !== "#/search") location.hash = "#/search"; searchFor(q.value); }, 280));
+  shell.querySelector(".devbtn").addEventListener("click", openDevices);
+  shell.querySelector("#meBtn").addEventListener("click", openMe);
+  renderNowBar();
+  loadSidePlaylists();
+}
+
+const avatarHTML = (name, size) => `<div class="avatar" style="width:${size}px;height:${size}px;background:${color(name)}">${esc((String(name)[0] || "?").toUpperCase())}</div>`;
+const chev = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${d === "l" ? "M15 18l-6-6 6-6" : "M9 6l6 6-6 6"}"/></svg>`;
+const gear = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1l-.4-2.6H9.6l-.4 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h4.8l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6a7 7 0 0 0 .1-1z"/></svg>';
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+function setActiveNav(id) {
+  document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === id));
+}
+
+async function loadSidePlaylists() {
+  try {
+    const pls = await jfItems({ IncludeItemTypes: "Playlist", SortBy: "SortName", Limit: "40" });
+    const box = document.getElementById("side-playlists");
+    if (!box) return;
+    box.innerHTML = pls.map((p) => `<a class="navlink" href="#/playlist/${p.id}">${ICON.list}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span></a>`).join("") || "";
+  } catch {}
+}
+
+// ---------- router ----------
+async function route() {
+  if (!sess) return;
+  const hash = location.hash.replace(/^#\//, "") || "home";
+  const [page, arg] = hash.split("/");
+  setActiveNav(["home", "search", "library", "favorites"].includes(page) ? page : "");
+  const view = document.getElementById("view");
+  if (!view) return;
+  view.innerHTML = `<div class="spin"></div>`;
+  try {
+    if (page === "home") await viewHome(view);
+    else if (page === "search") await viewSearch(view);
+    else if (page === "library") await viewLibrary(view, arg);
+    else if (page === "favorites") await viewFavorites(view);
+    else if (page === "album") await viewDetail(view, "album", arg);
+    else if (page === "artist") await viewDetail(view, "artist", arg);
+    else if (page === "playlist") await viewDetail(view, "playlist", arg);
+    else view.innerHTML = `<div class="empty">Page introuvable</div>`;
+  } catch (e) {
+    view.innerHTML = `<div class="empty">${esc(e.message || "Erreur")}</div>`;
+  }
+  document.querySelector("main.content")?.scrollTo(0, 0);
+}
+
+// ---------- views ----------
+function tileHTML(it, kind) {
+  const sub = kind === "album" ? esc(it.artistLine || it.album || "") : kind === "artist" ? "Artiste"
+    : kind === "playlist" ? (it.childCount ? it.childCount + " titres" : "Playlist") : esc(it.artistLine || "");
+  return `<div class="tile ${kind === "artist" ? "round" : ""}" data-open="${kind}:${it.id}">
+    <div class="cover">${coverTag(it, 180)}<button class="play-fab" data-play="${kind}:${it.id}">${ICON.play}</button></div>
+    <div class="nm">${esc(it.name)}</div><div class="sub">${sub}</div></div>`;
+}
+function coverTag(it, px) {
+  const u = artUrl(it, px);
+  return u ? `<img loading="lazy" src="${esc(u)}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=ph>${ICON.note.replace(/"/g, "&quot;")}</div>')">`
+           : `<div class="ph">${ICON.note}</div>`;
+}
+
+async function viewHome(view) {
+  const [albums, playlists] = await Promise.all([
+    jfItems({ IncludeItemTypes: "MusicAlbum", SortBy: "DateCreated", SortOrder: "Descending", Limit: "18" }),
+    jfItems({ IncludeItemTypes: "Playlist", SortBy: "DateCreated", SortOrder: "Descending", Limit: "12" }),
+  ]);
+  const hour = new Date().getHours();
+  const hello = hour < 6 ? "Bonne nuit" : hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+  view.innerHTML = `<div class="page">
+    <h1 class="title">${hello}, ${esc(sess.userName)}</h1>
+    <h2 class="sec">Ajoutés récemment</h2>
+    <div class="grid">${albums.map((a) => tileHTML(a, "album")).join("") || `<div class="empty">Rien pour l'instant</div>`}</div>
+    ${playlists.length ? `<h2 class="sec">Vos playlists</h2><div class="grid">${playlists.map((p) => tileHTML(p, "playlist")).join("")}</div>` : ""}
+  </div>`;
+  wireGrid(view);
+}
+
+async function viewSearch(view) {
+  view.innerHTML = `<div class="page"><h1 class="title">Recherche</h1><div id="results"><div class="empty">Tapez pour chercher dans votre bibliothèque.</div></div></div>`;
+  const q = document.getElementById("q");
+  if (q && q.value.trim()) searchFor(q.value);
+}
+async function searchFor(term) {
+  term = term.trim();
+  const box = document.getElementById("results");
+  if (!box) return;
+  if (!term) { box.innerHTML = `<div class="empty">Tapez pour chercher dans votre bibliothèque.</div>`; return; }
+  box.innerHTML = `<div class="spin"></div>`;
+  try {
+    const [songs, albums, artists, playlists] = await Promise.all([
+      jfItems({ searchTerm: term, IncludeItemTypes: "Audio", Limit: "40" }),
+      jfItems({ searchTerm: term, IncludeItemTypes: "MusicAlbum", Limit: "12" }),
+      jfItems({ searchTerm: term, IncludeItemTypes: "MusicArtist", Limit: "12" }),
+      jfItems({ searchTerm: term, IncludeItemTypes: "Playlist", Limit: "8" }),
+    ]);
+    let html = "";
+    if (artists.length) html += `<h2 class="sec">Artistes</h2><div class="grid">${artists.map((a) => tileHTML(a, "artist")).join("")}</div>`;
+    if (albums.length) html += `<h2 class="sec">Albums</h2><div class="grid">${albums.map((a) => tileHTML(a, "album")).join("")}</div>`;
+    if (playlists.length) html += `<h2 class="sec">Playlists</h2><div class="grid">${playlists.map((p) => tileHTML(p, "playlist")).join("")}</div>`;
+    if (songs.length) html += `<h2 class="sec">Titres</h2><div class="rows" id="song-rows"></div>`;
+    box.innerHTML = html || `<div class="empty">Aucun résultat pour « ${esc(term)} »</div>`;
+    if (songs.length) fillRows(box.querySelector("#song-rows"), songs);
+    wireGrid(box);
+  } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function viewLibrary(view, tab) {
+  tab = tab || "songs";
+  const tabs = [["songs", "Titres"], ["albums", "Albums"], ["artists", "Artistes"], ["playlists", "Playlists"]];
+  view.innerHTML = `<div class="page"><h1 class="title">Bibliothèque</h1>
+    <div style="display:flex;gap:8px;margin:4px 2px 18px;flex-wrap:wrap">
+      ${tabs.map(([id, l]) => `<a class="btn ${id === tab ? "primary" : ""}" href="#/library/${id}">${l}</a>`).join("")}
+    </div><div id="libbody"><div class="spin"></div></div></div>`;
+  const body = view.querySelector("#libbody");
+  if (tab === "songs") {
+    const songs = await jfItems({ IncludeItemTypes: "Audio", SortBy: "SortName", Limit: "500" });
+    body.innerHTML = `<div class="rows"></div>`; fillRows(body.querySelector(".rows"), songs);
+  } else {
+    const map = { albums: "MusicAlbum", artists: "MusicArtist", playlists: "Playlist" };
+    const kind = { albums: "album", artists: "artist", playlists: "playlist" }[tab];
+    const items = await jfItems({ IncludeItemTypes: map[tab], SortBy: "SortName", Limit: "500" });
+    body.innerHTML = `<div class="grid">${items.map((i) => tileHTML(i, kind)).join("") || `<div class="empty">Vide</div>`}</div>`;
+    wireGrid(body);
+  }
+}
+
+async function viewFavorites(view) {
+  const songs = await jfItems({ IncludeItemTypes: "Audio", Filters: "IsFavorite", SortBy: "SortName", Limit: "1000" });
+  view.innerHTML = `<div class="page">
+    <div class="dhead">
+      <div class="cover" style="background:var(--grad);display:grid;place-items:center;color:#fff">${ICON.heartf}</div>
+      <div class="meta"><div class="kind">Playlist</div><h1>Favoris</h1><div class="sub">${songs.length} titres</div>
+        <div class="actions"><button class="btn primary" id="playfav">${ICON.play} Lecture</button>
+          <button class="btn" id="shuffav">${ICON.shuffle} Aléatoire</button></div></div>
+    </div><div class="rows" id="favrows"></div></div>`;
+  fillRows(view.querySelector("#favrows"), songs);
+  view.querySelector("#playfav").onclick = () => player.playList(songs, 0, { name: "Favoris" });
+  view.querySelector("#shuffav").onclick = () => player.playList(shuffle(songs.slice()), 0, { name: "Favoris", shuffled: true });
+}
+
+async function viewDetail(view, kind, id) {
+  let head, songs;
+  if (kind === "album") {
+    const [info, tracks] = await Promise.all([jf(`/Items/${id}?userId=${sess.userId}`).then(track), jfItems({ ParentId: id, IncludeItemTypes: "Audio", SortBy: "ParentIndexNumber,IndexNumber,SortName" })]);
+    head = info; songs = tracks;
+  } else if (kind === "playlist") {
+    const [info, tracks] = await Promise.all([jf(`/Items/${id}?userId=${sess.userId}`).then(track), jf(`/Playlists/${id}/Items?userId=${sess.userId}&Fields=${FIELDS}`).then((r) => (r.Items || []).map(track))]);
+    head = info; songs = tracks;
+  } else {
+    const [info, tracks] = await Promise.all([jf(`/Items/${id}?userId=${sess.userId}`).then(track), jfItems({ ArtistIds: id, IncludeItemTypes: "Audio", SortBy: "PlayCount,SortName", SortOrder: "Descending", Limit: "100" })]);
+    head = info; songs = tracks;
+  }
+  const kindLabel = { album: "Album", playlist: "Playlist", artist: "Artiste" }[kind];
+  view.innerHTML = `<div class="page">
+    <div class="dhead ${kind === "artist" ? "round" : ""}">
+      ${coverBig(head)}
+      <div class="meta"><div class="kind">${kindLabel}</div><h1>${esc(head.name)}</h1>
+        <div class="sub">${esc(head.artistLine || "")}${head.year ? " · " + head.year : ""} · ${songs.length} titres</div>
+        <div class="actions"><button class="btn primary" id="playall">${ICON.play} Lecture</button>
+          <button class="btn" id="shufall">${ICON.shuffle} Aléatoire</button></div></div>
+    </div><div class="rows" id="detrows"></div></div>`;
+  fillRows(view.querySelector("#detrows"), songs, kind !== "artist");
+  view.querySelector("#playall").onclick = () => player.playList(songs, 0, { name: head.name });
+  view.querySelector("#shufall").onclick = () => player.playList(shuffle(songs.slice()), 0, { name: head.name, shuffled: true });
+}
+function coverBig(it) {
+  const u = artUrl(it, 220);
+  return u ? `<img class="cover" src="${esc(u)}" onerror="this.style.background='var(--panel2)';this.removeAttribute('src')">`
+           : `<div class="cover" style="display:grid;place-items:center">${ICON.note}</div>`;
+}
+
+// Fill a .rows container with track rows.
+function fillRows(box, songs, showArt = true) {
+  box.innerHTML = "";
+  songs.forEach((s, i) => {
+    const row = $(`<div class="trow" data-id="${s.id}">
+      ${showArt ? `<img class="art" loading="lazy" src="${esc(artUrl(s, 44))}" onerror="this.style.visibility='hidden'">` : `<div class="idx">${i + 1}</div>`}
+      <div class="t"><div class="nm">${esc(s.name)}</div><div class="a">${esc(s.artistLine || "")}</div></div>
+      <button class="heart ${s.fav ? "on" : ""}" title="Favori">${s.fav ? ICON.heartf : ICON.heart}</button>
+      <div class="dur">${fmt(s.duration)}</div>
+      <button class="more" title="Plus">${ICON.more}</button>
+    </div>`);
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".heart")) { toggleFav(s, row.querySelector(".heart")); return; }
+      if (e.target.closest(".more")) { openTrackMenu(s); return; }
+      player.playList(songs, i, {});
+    });
+    box.appendChild(row);
+  });
+  player.markPlaying();
+}
+
+function wireGrid(scope) {
+  scope.querySelectorAll("[data-open]").forEach((el) => el.addEventListener("click", (e) => {
+    if (e.target.closest("[data-play]")) return;
+    const [k, id] = el.dataset.open.split(":"); location.hash = `#/${k}/${id}`;
+  }));
+  scope.querySelectorAll("[data-play]").forEach((el) => el.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const [k, id] = el.dataset.play.split(":");
+    let songs = [];
+    if (k === "album") songs = await jfItems({ ParentId: id, IncludeItemTypes: "Audio", SortBy: "ParentIndexNumber,IndexNumber,SortName" });
+    else if (k === "playlist") songs = await jf(`/Playlists/${id}/Items?userId=${sess.userId}&Fields=${FIELDS}`).then((r) => (r.Items || []).map(track));
+    else if (k === "artist") songs = await jfItems({ ArtistIds: id, IncludeItemTypes: "Audio", SortBy: "Random", Limit: "100" });
+    if (songs.length) player.playList(songs, 0, {});
+  }));
+}
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+// ---------- favorites ----------
+async function toggleFav(s, el) {
+  const want = !s.fav;
+  try {
+    await jf(`/UserFavoriteItems/${s.id}?userId=${sess.userId}`, { method: want ? "POST" : "DELETE" });
+    s.fav = want;
+    if (el) { el.classList.toggle("on", want); el.innerHTML = want ? ICON.heartf : ICON.heart; }
+    connect.send({ type: "favorite", ids: [s.id], value: want });
+  } catch (e) { alert(e.message); }
+}
+
+async function openTrackMenu(s) {
+  const pls = await jfItems({ IncludeItemTypes: "Playlist", SortBy: "SortName", Limit: "100" });
+  const dlg = $(`<dialog><div class="dlg"><h3>Ajouter « ${esc(s.name)} » à…</h3>
+    <div class="opt" data-fav><div class="ic">${s.fav ? ICON.heartf : ICON.heart}</div><div>${s.fav ? "Retirer des favoris" : "Ajouter aux favoris"}</div></div>
+    ${pls.map((p) => `<div class="opt" data-pl="${p.id}"><div class="ic">${ICON.list}</div><div>${esc(p.name)}</div></div>`).join("")}
+  </div></dialog>`);
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  dlg.querySelector("[data-fav]").onclick = async () => { await toggleFav(s, null); dlg.close(); route(); };
+  dlg.querySelectorAll("[data-pl]").forEach((o) => o.onclick = async () => {
+    try { await jf(`/Playlists/${o.dataset.pl}/Items?Ids=${s.id}&userId=${sess.userId}`, { method: "POST" }); toast("Ajouté à la playlist"); }
+    catch (err) { alert(err.message); }
+    dlg.close();
+  });
+  dlg.addEventListener("close", () => dlg.remove());
+}
+
+function toast(msg) {
+  const t = $(`<div style="position:fixed;left:50%;bottom:calc(var(--bar-h) + 20px);transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:11px 18px;border-radius:12px;box-shadow:var(--shadow);z-index:99;font-weight:600">${esc(msg)}</div>`);
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1900);
+}
+
+// ---------- player (local) ----------
+const player = {
+  audio: new Audio(),
+  queue: [], index: -1, ctx: {}, psid: "web" + Date.now(),
+  shuffle: false, repeat: "off", volume: 1, reported: false,
+
+  init() {
+    this.audio.volume = this.volume;
+    this.audio.addEventListener("ended", () => this.next(true));
+    this.audio.addEventListener("timeupdate", () => { this.tick(); });
+    this.audio.addEventListener("play", () => { this.renderBar(); this.broadcast(); setMedia(this); });
+    this.audio.addEventListener("pause", () => { this.renderBar(); this.broadcast(); });
+    this.audio.addEventListener("error", () => { if (this.current) this.next(true); });
+  },
+  get current() { return this.queue[this.index] || null; },
+
+  playList(list, i, ctx) {
+    this.queue = list.slice(); this.index = i; this.ctx = ctx || {};
+    connect.claim();
+    this.load(true);
+  },
+  load(autoplay) {
+    const s = this.current; if (!s) return;
+    this.psid = "web" + Date.now() + Math.floor(Math.random() * 1e4);
+    this.reported = false;
+    this.audio.src = audioUrl(s.id);
+    if (autoplay) this.audio.play().catch(() => {});
+    this.renderBar(); this.markPlaying(); setMedia(this);
+    this.report();
+  },
+  toggle() { if (!this.current) return; this.audio.paused ? this.audio.play().catch(() => {}) : this.audio.pause(); },
+  next(auto) {
+    if (this.repeat === "one" && auto) { this.audio.currentTime = 0; this.audio.play().catch(() => {}); return; }
+    if (this.index < this.queue.length - 1) this.index++;
+    else if (this.repeat === "all") this.index = 0;
+    else { this.audio.pause(); return; }
+    this.load(true);
+  },
+  prev() {
+    if (this.audio.currentTime > 4 || this.index === 0) { this.audio.currentTime = 0; return; }
+    this.index--; this.load(true);
+  },
+  seek(frac) { if (this.current) this.audio.currentTime = frac * (this.audio.duration || this.current.duration || 0); },
+  setVolume(v) { this.volume = Math.min(1, Math.max(0, v)); this.audio.volume = this.volume; this.renderBar(); connect.send({ type: "volume", level: this.volume }); },
+  stop() { this.audio.pause(); this.audio.src = ""; this.queue = []; this.index = -1; this.renderBar(); },
+
+  tick() {
+    const bar = document.getElementById("npbar"); if (!bar || !this.current) return;
+    const d = this.audio.duration || this.current.duration || 0, c = this.audio.currentTime;
+    const fill = bar.querySelector(".seek .fill"), knob = bar.querySelector(".seek .knob");
+    if (fill) { const p = d ? (c / d) * 100 : 0; fill.style.width = p + "%"; if (knob) knob.style.left = p + "%"; }
+    const cur = bar.querySelector(".t-cur"); if (cur) cur.textContent = fmt(c);
+    if (!this.reported && c > 20) { this.reported = true; }
+    this._progCount = (this._progCount || 0) + 1;
+    if (this._progCount % 8 === 0) this.broadcast(true);
+  },
+  report() {
+    const s = this.current; if (!s) return;
+    sx("/api/me/plays", { method: "POST", body: JSON.stringify({ itemId: s.id, title: s.name, artist: s.artistLine, album: s.album, artId: s.albumId || s.id, artTag: s.albumTag || s.primaryTag, duration: s.duration, listened: 0 }) }).catch(() => {});
+    sx("/api/me/moment", { method: "PUT", body: JSON.stringify({ itemId: s.id, title: s.name, artist: s.artistLine, album: s.album, artId: s.albumId || s.id, artTag: s.albumTag || s.primaryTag, duration: s.duration }) }).catch(() => {});
+  },
+
+  markPlaying() {
+    document.querySelectorAll(".trow").forEach((r) => r.classList.toggle("playing", this.current && r.dataset.id === this.current.id && !this.audio.paused));
+  },
+  renderBar() { renderNowBar(); },
+  broadcast(progressOnly) {
+    if (!connect.isActive()) return;
+    const s = this.current;
+    const msg = progressOnly
+      ? { type: "progress", time: this.audio.currentTime, isPlaying: !this.audio.paused, duration: this.audio.duration || (s ? s.duration : 0), index: this.index }
+      : { type: "state", state: this.stateObj() };
+    connect.send(msg);
+  },
+  stateObj() {
+    return {
+      isPlaying: !this.audio.paused, time: this.audio.currentTime, duration: this.audio.duration || (this.current ? this.current.duration : 0), index: this.index,
+      queue: this.queue.map((t) => ({ track: { id: t.id, name: t.name, artistItems: t.artists, album: t.album, albumId: t.albumId, albumPrimaryImageTag: t.albumTag } })),
+    };
+  },
+};
+
+function renderNowBar() {
+  const bar = document.getElementById("npbar"); if (!bar) return;
+  // When a remote device is active and we're not playing locally, mirror it.
+  const remote = connect.remoteNowPlaying();
+  const s = player.current;
+  const playing = s && !player.audio.paused;
+  if (!s && !remote) { bar.innerHTML = `<div class="np-track"><div class="t"><div class="nm muted">Rien en lecture</div><div class="a muted">Choisissez un titre</div></div></div>`; return; }
+  if (remote && !s) { renderRemoteBar(bar, remote); return; }
+  const d = player.audio.duration || (s ? s.duration : 0);
+  const p = d ? (player.audio.currentTime / d) * 100 : 0;
+  bar.innerHTML = `
+    <div class="np-track" onclick="location.hash='#/${s.albumId ? "album/" + s.albumId : "home"}'">
+      <img src="${esc(artUrl(s, 52))}" onerror="this.style.visibility='hidden'">
+      <div class="t"><div class="nm">${esc(s.name)}</div><div class="a">${esc(s.artistLine || "")}</div></div>
+    </div>
+    <div class="controls">
+      <div class="btns">
+        <button class="dim shuffle ${player.shuffle ? "act" : ""}" title="Aléatoire">${ICON.shuffle}</button>
+        <button title="Précédent">${ICON.prev}</button>
+        <button class="pp" title="Lecture/Pause">${playing ? ICON.pause : ICON.play}</button>
+        <button title="Suivant">${ICON.next}</button>
+        <button class="dim repeat ${player.repeat !== "off" ? "act" : ""}" title="Répéter">${ICON.repeat}${player.repeat === "one" ? "¹" : ""}</button>
+      </div>
+      <div class="progress"><span class="time t-cur">${fmt(player.audio.currentTime)}</span>
+        <div class="seek"><div class="fill" style="width:${p}%"></div><div class="knob" style="left:${p}%"></div></div>
+        <span class="time">${fmt(d)}</span></div>
+    </div>
+    <div class="right">
+      <button class="np-pp" title="Lecture/Pause">${playing ? ICON.pause : ICON.play}</button>
+      <button class="devbtn2" title="Appareils">${ICON.device}</button>
+      ${ICON.vol}
+      <div class="vol"><div class="fill" style="width:${player.volume * 100}%"></div></div>
+    </div>`;
+  const q = (sel) => bar.querySelector(sel);
+  q(".pp").onclick = () => player.toggle();
+  q(".np-pp").onclick = () => player.toggle();
+  q(".btns button[title='Précédent']").onclick = () => player.prev();
+  q(".btns button[title='Suivant']").onclick = () => player.next(false);
+  q(".shuffle").onclick = () => { player.shuffle = !player.shuffle; renderNowBar(); };
+  q(".repeat").onclick = () => { player.repeat = player.repeat === "off" ? "all" : player.repeat === "all" ? "one" : "off"; renderNowBar(); };
+  q(".devbtn2").onclick = openDevices;
+  seekBind(q(".seek"), (f) => player.seek(f));
+  const vol = q(".vol"); vol.onclick = (e) => { const r = vol.getBoundingClientRect(); player.setVolume((e.clientX - r.left) / r.width); };
+  player.markPlaying();
+}
+function renderRemoteBar(bar, r) {
+  const dev = connect.activeDevice();
+  bar.innerHTML = `
+    <div class="np-track"><img src="${esc(artUrl({ albumId: r.artId, albumTag: r.artTag, id: r.itemId }, 52))}" onerror="this.style.visibility='hidden'">
+      <div class="t"><div class="nm">${esc(r.title || "")}</div><div class="a">${esc(r.artist || "")}</div></div></div>
+    <div class="controls"><div class="btns"><span class="devbadge">${ICON.phone} En lecture sur ${esc(dev ? dev.name : "un appareil")}</span></div></div>
+    <div class="right"><button class="btn primary" style="padding:9px 16px" id="playhere">${ICON.play} Jouer ici</button>
+      <button class="devbtn2" title="Appareils">${ICON.device}</button></div>`;
+  bar.querySelector("#playhere").onclick = () => { if (player.current) { connect.claim(); player.audio.play().catch(() => {}); } else toast("Choisissez un titre à jouer ici"); };
+  bar.querySelector(".devbtn2").onclick = openDevices;
+}
+function seekBind(el, cb) {
+  if (!el) return;
+  const go = (e) => { const r = el.getBoundingClientRect(); const x = (e.touches ? e.touches[0].clientX : e.clientX); cb(Math.min(1, Math.max(0, (x - r.left) / r.width))); };
+  el.addEventListener("click", go);
+}
+
+// MediaSession (OS / keyboard media keys in the browser).
+function setMedia(p) {
+  if (!("mediaSession" in navigator) || !p.current) return;
+  const s = p.current;
+  navigator.mediaSession.metadata = new MediaMetadata({ title: s.name, artist: s.artistLine || "", album: s.album || "", artwork: [{ src: artUrl(s, 300), sizes: "600x600", type: "image/jpeg" }] });
+  navigator.mediaSession.setActionHandler("play", () => p.toggle());
+  navigator.mediaSession.setActionHandler("pause", () => p.toggle());
+  navigator.mediaSession.setActionHandler("nexttrack", () => p.next(false));
+  navigator.mediaSession.setActionHandler("previoustrack", () => p.prev());
+}
+
+// ---------- Connect (devices) ----------
+const connect = {
+  ws: null, devices: [], activeId: null, state: null, stateAt: 0, backoff: 1000,
+
+  open() {
+    if (!sess) return;
+    const url = `${WSBASE}/api/connect?ApiKey=${encodeURIComponent(sess.token)}&deviceId=${encodeURIComponent(deviceId())}&name=${encodeURIComponent("Navigateur")}&kind=web&volume=1`;
+    try { this.ws = new WebSocket(url); } catch { return; }
+    this.ws.onopen = () => { this.backoff = 1000; };
+    this.ws.onmessage = (e) => { try { this.onMsg(JSON.parse(e.data)); } catch {} };
+    this.ws.onclose = () => { this.ws = null; setTimeout(() => this.open(), this.backoff); this.backoff = Math.min(15000, this.backoff * 1.7); };
+    this.ws.onerror = () => { try { this.ws.close(); } catch {} };
+  },
+  close() { try { this.ws && this.ws.close(); } catch {} this.ws = null; },
+  send(msg) { if (this.ws && this.ws.readyState === 1) try { this.ws.send(JSON.stringify(msg)); } catch {} },
+  claim() { this.send({ type: "claim" }); this.activeId = deviceId(); },
+  isActive() { return this.activeId === deviceId(); },
+  activeDevice() { return this.devices.find((d) => d.id === this.activeId) || null; },
+
+  onMsg(m) {
+    if (m.type === "devices") { this.devices = m.devices || []; this.activeId = m.active; renderNowBar(); refreshDevicesDialog(); }
+    else if (m.type === "state") { this.state = m.state; this.stateAt = Date.now(); if (!player.current) renderNowBar(); }
+    else if (m.type === "progress") { if (this.state) { Object.assign(this.state, { time: m.time, isPlaying: m.isPlaying, duration: m.duration, index: m.index }); this.stateAt = Date.now(); } if (!player.current) renderNowBar(); }
+    else if (m.type === "release") { player.audio.pause(); this.activeId = null; renderNowBar(); }
+    else if (m.type === "favorite") { /* could refresh hearts live */ }
+  },
+  remoteNowPlaying() {
+    if (this.isActive() || !this.activeId || !this.state) return null;
+    const st = this.state, q = st.queue || [], i = st.index || 0;
+    const t = (q[i] || {}).track; if (!t || !st.isPlaying) return null;
+    return { itemId: t.id, title: t.name, artist: (t.artistItems || []).map((a) => a.name).join(", ") || "", artId: t.albumId, artTag: t.albumPrimaryImageTag };
+  },
+};
+
+let devDialog = null;
+function openDevices() {
+  devDialog = $(`<dialog><div class="dlg"><h3>Appareils</h3><div id="devlist"></div>
+    <div class="muted" style="margin-top:10px;font-size:12.5px">Le transfert entre appareils arrive bientôt.</div></div></dialog>`);
+  document.body.appendChild(devDialog); devDialog.showModal();
+  devDialog.addEventListener("click", (e) => { if (e.target === devDialog) devDialog.close(); });
+  devDialog.addEventListener("close", () => { devDialog.remove(); devDialog = null; });
+  refreshDevicesDialog();
+}
+function refreshDevicesDialog() {
+  if (!devDialog) return;
+  const list = devDialog.querySelector("#devlist");
+  const devs = connect.devices.length ? connect.devices : [{ id: deviceId(), name: "Navigateur", kind: "web" }];
+  list.innerHTML = devs.map((d) => `<div class="opt ${d.id === connect.activeId ? "active" : ""}">
+    <div class="ic">${d.kind === "web" ? ICON.device : ICON.phone}</div>
+    <div style="flex:1"><div style="font-weight:600">${esc(d.name)}${d.id === deviceId() ? " (cet appareil)" : ""}</div>
+      <div class="muted" style="font-size:12px">${d.id === connect.activeId ? "En lecture" : "Disponible"}</div></div></div>`).join("");
+}
+
+function openMe() {
+  const dlg = $(`<dialog><div class="dlg"><h3>${esc(sess.userName)}</h3>
+    ${sess.isAdmin ? `<a class="opt" href="${BASE}/admin"><div class="ic">${gear()}</div><div>Interface admin</div></a>` : ""}
+    <div class="opt" id="logout"><div class="ic">⎋</div><div>Se déconnecter</div></div></div></dialog>`);
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.querySelector("#logout").onclick = () => { dlg.close(); logout(); };
+}
+
+// ---------- boot ----------
+function boot() {
+  renderShell();
+  connect.open();
+  route();
+}
+window.addEventListener("hashchange", route);
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.code === "Space") { e.preventDefault(); player.toggle(); }
+  else if (e.code === "ArrowRight" && e.shiftKey) player.next(false);
+  else if (e.code === "ArrowLeft" && e.shiftKey) player.prev();
+});
+
+player.init();
+if (sess) boot(); else renderLogin();
+</script>
+</body>
+</html>
