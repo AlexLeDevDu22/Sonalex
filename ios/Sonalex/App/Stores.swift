@@ -14,8 +14,11 @@ final class ImageCache {
         c.countLimit = 400
         return c
     }()
-    private var inflight: [URL: Task<UIImage?, Never>] = [:]
-    /// URLs that returned no image this session (e.g. artists without a Jellyfin photo).
+    private var inflight: [URL: Task<(image: UIImage?, missing: Bool), Never>] = [:]
+    /// URLs the server says truly have no image (404/403), e.g. an artist without a Jellyfin photo:
+    /// remembered so we don't keep asking. A network error or timeout is NOT remembered — it gets
+    /// retried, so a cover that failed once on a flaky/hairpin connection fills in on its own the
+    /// next time a view asks for it.
     private var failed: Set<URL> = []
 
     func cached(_ url: URL?) -> UIImage? {
@@ -26,25 +29,37 @@ final class ImageCache {
     func image(for url: URL) async -> UIImage? {
         if let hit = memory.object(forKey: url as NSURL) { return hit }
         if failed.contains(url) { return nil }
-        if let task = inflight[url] { return await task.value }
+        if let task = inflight[url] { return await task.value.image }
         // .utility: byPreparingForDisplay hops to a default-QoS thread, a higher QoS here is a
         // priority inversion (Xcode warns about it).
-        let task = Task.detached(priority: .utility) { () -> UIImage? in
+        let task = Task.detached(priority: .utility) { () -> (image: UIImage?, missing: Bool) in
             // Cover of a downloaded song: from the device (instant, works offline).
             if let local = OfflineCovers.file(for: url), let data = try? Data(contentsOf: local),
                let image = UIImage(data: data) {
-                return await image.byPreparingForDisplay() ?? image
+                return (await image.byPreparingForDisplay() ?? image, false)
             }
-            guard let result = try? await URLSession.shared.data(from: url),
-                  (result.1 as? HTTPURLResponse)?.statusCode == 200,
-                  let image = UIImage(data: result.0) else { return nil }
-            return await image.byPreparingForDisplay() ?? image
+            // Two tries: a transient failure on a slow connection shouldn't blank the cover for good.
+            for attempt in 0..<2 {
+                guard let result = try? await URLSession.shared.data(from: url) else {
+                    if attempt == 0 { try? await Task.sleep(nanoseconds: 400_000_000); continue }
+                    return (nil, false)  // network error / timeout: transient, retry later
+                }
+                let code = (result.1 as? HTTPURLResponse)?.statusCode ?? 0
+                if code == 200, let image = UIImage(data: result.0) {
+                    return (await image.byPreparingForDisplay() ?? image, false)
+                }
+                if (400..<500).contains(code) { return (nil, true) }  // really absent (e.g. no photo)
+                if attempt == 0 { try? await Task.sleep(nanoseconds: 400_000_000); continue }
+                return (nil, false)  // 5xx or garbled body: treat as transient
+            }
+            return (nil, false)
         }
         inflight[url] = task
-        let image = await task.value
+        let result = await task.value
         inflight[url] = nil
-        if let image { memory.setObject(image, forKey: url as NSURL) } else { failed.insert(url) }
-        return image
+        if let image = result.image { memory.setObject(image, forKey: url as NSURL) }
+        else if result.missing { failed.insert(url) }
+        return result.image
     }
 }
 
