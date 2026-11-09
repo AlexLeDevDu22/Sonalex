@@ -44,12 +44,32 @@ def _lastfm_similar(title: str, artist: str, limit: int = 50) -> list[tuple[str,
     return result
 
 
-def _deezer_radio(artist: str) -> tuple[list[dict], list[str]]:
-    """(radio tracks, related artist names) for an artist name."""
+def _seed_artist_id(title: str, artist: str, key: str | None) -> int | None:
+    """The Deezer id of the seed's REAL artist, pinned on the track itself — never a bare name
+    search (two different artists can share a name: "Cherry Pie" the rapper vs a 60s covers act).
+    Order: the seed's own Deezer id, then an exact title+artist match. If neither pins it we skip
+    Deezer rather than risk the wrong namesake."""
+    if key and key.startswith("dz:"):
+        try:
+            aid = (catalog.dz_track(key[3:]).get("artist") or {}).get("id")
+            if aid:
+                return aid
+        except Exception:
+            pass
     try:
-        aid = catalog.dz_artist_id(artist)
+        found = catalog.dz_search_track(title, artist)  # matches BOTH the title and the artist name
+        if found:
+            aid = (found.get("artist") or {}).get("id")
+            if aid:
+                return aid
     except Exception:
-        return [], []
+        pass
+    return None
+
+
+def _deezer_radio(title: str, artist: str, key: str | None) -> tuple[list[dict], list[str]]:
+    """(radio tracks, related artist names) for the seed's real artist."""
+    aid = _seed_artist_id(title, artist, key)
     if not aid:
         return [], []
     tracks, related = [], []
@@ -84,11 +104,12 @@ def _primary(t: dict) -> str:
 def radio(seed: dict, recent: list[dict], limit: int, user_headers: dict, user_id: str) -> list[dict]:
     title = seed.get("title") or ""
     artist = re.split(r",| feat\.? | & ", seed.get("artist") or "")[0].strip()
+    key = seed.get("key") or ""
     seen = {song_signature(title, artist)}
     seen |= {song_signature(r.get("title"), r.get("artist")) for r in recent}
 
     lastfm_future = _pool.submit(_lastfm_similar, title, artist)
-    dz_tracks, related = _deezer_radio(artist) if artist else ([], [])
+    dz_tracks, related = _deezer_radio(title, artist, key) if artist else ([], [])
     lastfm = lastfm_future.result()
 
     # Last.fm only gives names: find them on Deezer (cover, duration, playable key) in parallel.
