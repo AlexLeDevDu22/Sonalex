@@ -175,6 +175,7 @@ final class OfflineStore {
 
     @ObservationIgnored private var queue: [(Item, Bool)] = []
     @ObservationIgnored private var working = false
+    @ObservationIgnored private var bgTask: UIBackgroundTaskIdentifier = .invalid
     @ObservationIgnored private let dir: URL
 
     private init() {
@@ -349,6 +350,8 @@ final class OfflineStore {
     private func work() {
         guard !working, !queue.isEmpty else { return }
         working = true
+        beginBackground()  // keep going for a bit after the app is backgrounded, so a song you just
+                           // favorited finishes downloading even if you leave the app right away.
         Task {
             while !queue.isEmpty {
                 let (track, manual) = queue.removeFirst()
@@ -358,7 +361,25 @@ final class OfflineStore {
                 downloading.remove(track.id)
             }
             working = false
+            endBackground()
         }
+    }
+
+    private func beginBackground() {
+        #if !targetEnvironment(macCatalyst)
+        guard bgTask == .invalid else { return }
+        bgTask = UIApplication.shared.beginBackgroundTask(withName: "sonalex.download") { [weak self] in
+            MainActor.assumeIsolated { self?.endBackground() }
+        }
+        #endif
+    }
+
+    private func endBackground() {
+        #if !targetEnvironment(macCatalyst)
+        guard bgTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(bgTask)
+        bgTask = .invalid
+        #endif
     }
 
     private func fetch(_ track: Item, manual: Bool) async {

@@ -45,13 +45,24 @@ final class Connectivity {
         Task { await probe() }
     }
 
+    @ObservationIgnored private var offlineGrace: Task<Void, Never>?
+
     private func pathChanged(_ ok: Bool) {
         pathOK = ok
+        offlineGrace?.cancel()
+        offlineGrace = nil
         if ok {
             Task { await probe() }
         } else {
+            // A path drop is very often a brief hand-off (Wi-Fi ⇄ cellular, a tunnel, a lift): do
+            // NOT call it offline at once, or playback reacts to every hiccup. Wait a moment and
+            // only commit if the network is genuinely still gone.
             results = []
-            set(.offline)
+            offlineGrace = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard let self, !Task.isCancelled else { return }
+                if self.pathOK { await self.probe() } else { self.set(.offline) }
+            }
         }
     }
 
@@ -66,18 +77,22 @@ final class Connectivity {
     private func runProbe() async {
         guard pathOK else { set(.offline); return }
         guard let server = SessionStore.shared.session?.server, let url = URL(string: server + "/System/Ping") else { return }
+        // Three chances before calling it offline: a slow or hairpinned link drops the odd request,
+        // and treating that as "offline" is what makes playback jump around. Being slow to declare
+        // offline is fine — a real loss of network is caught by the path monitor instead.
         var took = await ping(url)
-        if took == nil { took = await ping(url) }  // one more chance before calling it offline
+        if took == nil { took = await ping(url) }
+        if took == nil { took = await ping(url) }
         lastProbe = Date()
         results = Array((results + [took]).suffix(3))
         guard let took else { set(.offline); return }
         if status == .offline { results = [took] }  // just back: older failures don't count
         let recentFailure = results.dropLast().contains { $0 == nil }
-        set(took > 1.5 || recentFailure ? .unstable : .online)
+        set(took > 2.5 || recentFailure ? .unstable : .online)
     }
 
     private func ping(_ url: URL) async -> Double? {
-        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 4)
+        let req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 6)
         let started = Date()
         guard let (_, response) = try? await URLSession.shared.data(for: req),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }

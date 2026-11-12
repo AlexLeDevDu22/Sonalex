@@ -10,6 +10,7 @@ struct SearchView: View {
     @State private var scope: Scope = .all
     @State private var results = JellyfinClient.SearchResults()
     @State private var searching = false
+    @State private var searchNonce = 0
     @State private var genres: [Item] = []
     @AppStorage("search.recent") private var recentRaw = ""
     /// "online" = the server's online catalog (streamed if not downloaded), "library" = Jellyfin only.
@@ -39,8 +40,8 @@ struct SearchView: View {
                 Text("Library").tag("library")
             }
         }
-        .onSubmit(of: .search) { remember(query) }
-        .task(id: query + "|" + source) { await runSearch() }
+        .onSubmit(of: .search) { remember(query); searchNonce += 1 }
+        .task(id: query + "|" + source + "|\(searchNonce)") { await runSearch() }
         .task(id: LibrarySync.shared.version) { genres = (try? await JellyfinClient.shared.genres()) ?? genres }
     }
 
@@ -302,7 +303,13 @@ struct SearchView: View {
             let r = try await JellyfinClient.shared.search(term)
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.15)) { results = r }
-        } catch {}
+        } catch {
+            // A flaky link drops the odd request: one quiet retry before leaving the old results.
+            try? await Task.sleep(for: .milliseconds(400))
+            if !Task.isCancelled, let r = try? await JellyfinClient.shared.search(term) {
+                withAnimation(.easeOut(duration: 0.15)) { results = r }
+            }
+        }
         searching = false
     }
 

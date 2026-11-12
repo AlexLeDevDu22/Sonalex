@@ -1192,6 +1192,7 @@ final class PlayerManager {
     /// Makes sure the item right after the current one in AVQueuePlayer matches the queue.
     private func refreshNextItem() {
         defer { queueDidChange() }
+        prefetchNextArtwork()
         if engineMode { mixEngine.queueChanged(); return }
         let items = player.items()
         guard let head = items.first as? TrackItem, head === loadedItem else { return }
@@ -1569,6 +1570,14 @@ final class PlayerManager {
         publishPlaybackState()
     }
 
+    /// Warm the next track's cover in the cache so a skip — including from the lock screen or the
+    /// Dynamic Island — shows it at once, with no flash of an empty cover before the real one.
+    private func prefetchNextArtwork() {
+        guard let i = nextIndex(), queue.indices.contains(i) else { return }
+        guard let url = api.artURL(queue[i].track, points: 200), ImageCache.shared.cached(url) == nil else { return }
+        Task { _ = await ImageCache.shared.image(for: url) }
+    }
+
     private func loadArtwork(for track: Item) {
         // Already loading this cover: don't restart (repeated updates used to cancel it forever).
         guard artworkLoadingId != track.id else { return }
@@ -1873,6 +1882,7 @@ extension PlayerManager {
         ListeningHistory.shared.record(track)
         if let outgoing { PlayerDiagnostics.log("mixPlaying", ["from": outgoing.title]) }
         updateNowPlayingInfo()
+        prefetchNextArtwork()
         queueDidChange()
         persist()
     }
