@@ -150,6 +150,9 @@ final class PlayerManager {
     private var engineMode: Bool { mixEnabled && !isRemote && !localOnlyMode && ServerFeatures.shared.companion }
     /// No connection: only songs on this device are played (set by connectivityChanged).
     @ObservationIgnored private var localOnlyMode = false
+    /// Set when the connection dropped on a song that isn't downloaded: we pause on it (never jump
+    /// to another track) and resume this exact song, where it stopped, once we're back online.
+    @ObservationIgnored private var pausedForOffline: (wasPlaying: Bool, at: Double)?
     /// The whole queue while it's cut down to the songs on the device (offline): back when online.
     @ObservationIgnored private var offlineStash: [QueueEntry]?
     /// Unstable network, and the list has songs not on the device: what to do (asked in an alert).
@@ -737,6 +740,7 @@ final class PlayerManager {
         }
         self.shuffle = wantShuffle
         offlineStash = nil
+        pausedForOffline = nil
         if localOnly == true {
             // Only what's on the device; the tapped song, or the first one after it that is.
             let full = entries
@@ -768,21 +772,37 @@ final class PlayerManager {
         if new == .offline {
             guard !localOnlyMode else { return }
             localOnlyMode = true
-            if mixEngine.active {
-                if isPlaying, let point = mixEngine.handoffPoint(minLead: 1.5) {
-                    handOverToPlayer(point, fallback: true)
-                } else {
-                    let wasPlaying = isPlaying, t = currentTime
-                    mixEngine.stop()
-                    mixProgress = nil
-                    mixOutgoing = nil
-                    loadCurrent(autoplay: wasPlaying, at: t)
-                }
+            let curDownloaded = currentEntry.map { isPlayableOffline($0.track) } ?? false
+            let wasPlaying = isPlaying, t = currentTime
+            if mixEngine.active { mixEngine.stop(); mixProgress = nil; mixOutgoing = nil }
+            if curDownloaded {
+                // Downloaded: keep the SAME song, now from its local file — no gap, no jump.
+                loadCurrent(autoplay: wasPlaying, at: t)
+            } else if currentEntry != nil {
+                // Not downloaded and no network: stay ON this song, paused, and resume it exactly
+                // where it stopped once we're back. NEVER skip to another track — that was the
+                // "the song cut out and skipped by itself in the métro" bug.
+                pausedForOffline = (wasPlaying, t)
+                reportStoppedIfNeeded()
+                player.pause()
+                player.removeAllItems()  // drop the stalled stream so there's no endless spinner
+                loadedItem = nil
+                wantsToPlay = false
+                isPlaying = false
+                isBuffering = false
+                endLoadingTask()
+                updateNowPlayingPlayback()
+                ToastCenter.shared.show("No connection — this song resumes when you're back online",
+                                        systemImage: "wifi.slash")
             }
             keepOnlyLocalSongs()
         } else if old == .offline {
             localOnlyMode = false
             restoreFullQueue()
+            if let (wasPlaying, t) = pausedForOffline {
+                pausedForOffline = nil
+                loadCurrent(autoplay: wasPlaying, at: t)  // resume the very same song, where it was
+            }
         }
     }
 
