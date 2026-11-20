@@ -245,9 +245,21 @@ final class Community {
 
     /// Checks the address: a Jellyfin server, with the Sonalex server, that takes new users.
     static func serverInfo(_ server: String) async throws -> ServerInfo {
-        guard let url = URL(string: server + "/System/Info/Public"),
-              let (_, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200 else { throw SignUpError.notJellyfin }
+        guard let url = URL(string: server + "/System/Info/Public") else { throw SignUpError.notJellyfin }
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(from: url)
+        } catch {
+            throw APIError.unreachable
+        }
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw SignUpError.notJellyfin }
+        // 200 isn't enough: a relay or another app can answer 200. Check it's really Jellyfin.
+        let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let isJellyfin = (json?["Version"] as? String)?.isEmpty == false
+            || (json?["Id"] as? String)?.isEmpty == false
+            || ((json?["ProductName"] as? String)?.range(of: "jellyfin", options: .caseInsensitive) != nil)
+        guard isJellyfin else { throw SignUpError.notJellyfin }
         let info = try JSONDecoder().decode(ServerInfo.self, from: try await call(server, "/api/accounts/info"))
         guard info.signups else { throw SignUpError.closed }
         return info

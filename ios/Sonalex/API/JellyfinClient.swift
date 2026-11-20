@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 
 enum APIError: LocalizedError {
-    case notLoggedIn, unauthorized, badURL, unreachable, badCredentials
+    case notLoggedIn, unauthorized, badURL, unreachable, badCredentials, notJellyfin
     case http(Int)
 
     var errorDescription: String? {
@@ -12,6 +12,7 @@ enum APIError: LocalizedError {
         case .badURL: "Invalid server address."
         case .unreachable: "Can’t reach the server. Check the address and that you’re on the right network."
         case .badCredentials: "Wrong username or password."
+        case .notJellyfin: "This address doesn’t look like a Jellyfin server. Check it (e.g. https://jellyfin.example.com)."
         case .http(let code): "Server error (\(code))."
         }
     }
@@ -170,15 +171,27 @@ final class JellyfinClient {
         guard let infoURL = URL(string: server + "/System/Info/Public"),
               let authURL = URL(string: server + "/Users/AuthenticateByName") else { throw APIError.badURL }
 
-        struct PublicInfo: Decodable { var serverName: String? }
+        struct PublicInfo: Decodable { var serverName: String?; var version: String?; var id: String?; var productName: String? }
         let info: PublicInfo
         do {
             let (data, resp) = try await URLSession.shared.data(from: infoURL)
-            guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw APIError.unreachable }
-            info = try Self.decoder.decode(PublicInfo.self, from: data)
+            // Reachable but not Jellyfin (a relay, a different app, a login page…) answers with a
+            // non-200 or a body that isn't Jellyfin's: say so, instead of a vague "unreachable".
+            guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw APIError.notJellyfin }
+            do {
+                info = try Self.decoder.decode(PublicInfo.self, from: data)
+            } catch {
+                throw APIError.notJellyfin
+            }
+        } catch let apiError as APIError {
+            throw apiError
         } catch {
             throw APIError.unreachable
         }
+        // A real Jellyfin server identifies itself here (version / id / "Jellyfin Server").
+        let looksJellyfin = info.version?.isEmpty == false || info.id?.isEmpty == false
+            || info.productName?.range(of: "jellyfin", options: .caseInsensitive) != nil
+        guard looksJellyfin else { throw APIError.notJellyfin }
 
         var req = URLRequest(url: authURL)
         req.httpMethod = "POST"
