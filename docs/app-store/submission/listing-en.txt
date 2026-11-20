@@ -1,0 +1,74 @@
+==============================================================
+ SONALEX — App Store listing (English, PRIMARY language)
+ Paste each block into App Store Connect. Character counts verified.
+==============================================================
+
+--------------------------------------------------------------
+NAME (30 max) — 7
+--------------------------------------------------------------
+Sonalex
+
+--------------------------------------------------------------
+SUBTITLE (30 max) — 25
+--------------------------------------------------------------
+Music player for Jellyfin
+
+--------------------------------------------------------------
+PROMOTIONAL TEXT (170 max) — 153
+--------------------------------------------------------------
+Your albums, playlists and lyrics, from your own Jellyfin server. DJ-style transitions between songs with the free, open-source Sonalex companion server.
+
+--------------------------------------------------------------
+KEYWORDS (100 max) — 88   (comma-separated, no spaces)
+--------------------------------------------------------------
+server,self-hosted,flac,mp3,lyrics,offline,dj,mix,crossfade,playlist,library,audio,album
+
+--------------------------------------------------------------
+DESCRIPTION (4000 max)
+--------------------------------------------------------------
+Sonalex is a music player for your own Jellyfin server. Sign in with your usual Jellyfin account and get your whole library in a fast, beautiful app made for music.
+
+YOUR LIBRARY
+• Home with what you played lately, your most played songs and some to rediscover
+• Artists, albums, songs, genres, playlists and favorites
+• Instant search across your whole library
+• Create and edit playlists, favorite a song in one tap
+
+A REAL PLAYER
+• Full-screen player in the colors of the artwork
+• Synced lyrics that follow the music
+• Editable queue, smart shuffle that spreads artists out
+• Gapless playback
+• AirPlay, lock screen, Dynamic Island
+
+OFFLINE TOO
+• Download a song, an album or a playlist to your device
+• Your most played favorites download themselves
+
+ON ALL YOUR DEVICES
+• iPhone, iPad and a real Mac app: sidebar, keyboard shortcuts, menu bar controls
+
+WITH THE SONALEX SERVER (OPTIONAL)
+Install the free, open-source Sonalex server next to your Jellyfin to go further:
+• Mix: DJ-style transitions between your songs, beat-matched, that wait for the lyrics to end
+• Connect: start the music on your Mac, carry on on your iPhone, control one device from another
+
+YOUR MUSIC STAYS HOME
+Sonalex has no account, no ads and collects no data: the app only talks to your server.
+
+Sonalex requires a Jellyfin server (free, https://jellyfin.org): yours, or one someone made you an account on. Sonalex is not affiliated with the Jellyfin project.
+
+--------------------------------------------------------------
+WHAT'S NEW (version 1.0)
+--------------------------------------------------------------
+First release of Sonalex.
+
+--------------------------------------------------------------
+URLs
+--------------------------------------------------------------
+Support URL:        https://github.com/AlexLeDevDu22/sonalex/issues
+Marketing URL:      https://github.com/AlexLeDevDu22/sonalex
+Privacy Policy URL: https://github.com/AlexLeDevDu22/sonalex/blob/main/PRIVACY.md
+Category:           Music (secondary: Entertainment)
+Price:              Free
+Copyright:          2026 Alex Garin

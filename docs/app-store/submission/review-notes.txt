@@ -1,0 +1,27 @@
+==============================================================
+ APP REVIEW INFORMATION — Notes (4000 max)
+ Field in App Store Connect: "Notes" / "Remarques pour la vérification".
+ Paste the block below (between the lines). Written in English for the reviewer.
+
+ BEFORE YOU PASTE: the demo account below must really exist on the server,
+ or Apple rejects the app as "not functional". See demo-account-setup.md.
+==============================================================
+
+------------------------- PASTE FROM HERE -------------------------
+Sonalex is a client for Jellyfin, a free self-hosted media server. There is no Sonalex account: each user signs in to their own server. The sign-in screen asks for a server address, a username and a password. To review the app, please use our demo server:
+
+Server:   https://my-sonalex.garinio.com
+Username: review
+Password: Sonalex-Review-IEBc1
+
+How to test:
+1. Launch the app. On the sign-in screen, enter the server address, username and password above, then tap "Sign In".
+2. Tap "Home" or "Library" and play any song. The demo library contains only royalty-free / Creative Commons music.
+3. (Optional feature) The demo server also runs the optional open-source Sonalex companion server (https://github.com/AlexLeDevDu22/sonalex). In the player, open the queue (list icon) and tap the wand to turn on "Mix" (DJ-style transitions between songs); skip near the end of a track to hear a transition.
+
+About App Transport Security (NSAllowsArbitraryLoads = YES): users connect to their own media server at an address they type in. Many home servers are only reachable over plain HTTP on the local network, so the app cannot require HTTPS. The demo server above is served over HTTPS.
+
+The app collects no data and contains no account creation, no ads and no in-app purchases. It only communicates with the server the user signs in to.
+
+Contact for review questions: open an issue at https://github.com/AlexLeDevDu22/sonalex/issues
+-------------------------- TO HERE --------------------------

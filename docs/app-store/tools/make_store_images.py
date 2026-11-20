@@ -24,8 +24,8 @@ FONT_DIRS = [Path("/usr/share/fonts/truetype/nunito-sans"), Path("/usr/share/fon
 
 # Sizes accepted by App Store Connect: the largest of each family, smaller devices are derived.
 SIZES = {
-    "iphone": (1320, 2868),  # 6.9" (iPhone 16/17 Pro Max)
-    "ipad": (2064, 2752),    # 13" (iPad Pro M4)
+    "iphone": (1206, 2622),  # 6.3" (iPhone 16/17 Pro) — App Store Connect derives 6.1" (1179×2556)
+    "ipad": (2064, 2752),    # 13" (iPad Pro M4) — App Store Connect derives 12.9" (2048×2732)
     "mac": (2880, 1800),     # 16:10
 }
 TOP, MIDDLE, BOTTOM = (38, 20, 104), (124, 92, 255), (255, 84, 150)
