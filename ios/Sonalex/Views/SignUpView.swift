@@ -16,6 +16,7 @@ struct SignUpView: View {
     @State private var confirm = ""
     @State private var service: MusicService = .none
     @State private var deezer = ""
+    @State private var spotifyToken = ""
     @State private var signUp: Community.SignUp?
     @State private var working = false
     @State private var error: String?
@@ -104,6 +105,12 @@ struct SignUpView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
+            if service == .spotify {
+                TextField("Spotify token (optional)", text: $spotifyToken, axis: .vertical)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .lineLimit(1...3)
+            }
         } header: {
             Text("Your music")
         } footer: {
@@ -167,7 +174,7 @@ struct SignUpView: View {
 
     private var serviceFooter: String {
         switch service {
-        case .spotify: "Once you're accepted, connect Spotify from your profile: your liked songs and playlists come into your library, and stay in sync."
+        case .spotify: "Paste a Spotify token to connect now (your liked songs and playlists sync into your library), or leave it empty and connect later from your profile. Without a token, search and downloads still work through the server's own Spotify."
         case .deezer: "Your Deezer favorites and playlists come into your library. Your profile must be public: Deezer → Settings → Privacy. Copy its link from your profile page (Share)."
         case .none: "Your library fills up with what you add yourself. You can connect a service later."
         }
@@ -206,7 +213,8 @@ struct SignUpView: View {
             do {
                 let request = try await Community.requestAccount(
                     server: server, name: name.trimmingCharacters(in: .whitespaces), password: password, service: service,
-                    deezer: service == .deezer ? deezer.trimmingCharacters(in: .whitespaces) : nil)
+                    deezer: service == .deezer ? deezer.trimmingCharacters(in: .whitespaces) : nil,
+                    spotifyToken: service == .spotify ? spotifyToken.trimmingCharacters(in: .whitespaces) : nil)
                 Community.pendingSignUp = request
                 signUp = request
                 Notifier.requestPermission()

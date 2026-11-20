@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CarPlay audio app entitlement. Apple grants this on request:
+	     https://developer.apple.com/contact/request/carplay-audio
+	     In the SIMULATOR it works without approval (entitlements aren't checked there).
+	     For a device or an App Store build, Apple must have approved it for your App ID,
+	     or code signing fails. Do NOT reference this file from the App Store build until
+	     then. See docs/app-store/CARPLAY.md. -->
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
+</dict>
+</plist>

@@ -41,3 +41,10 @@ see `demo-account-setup.md`.
 
 Full background (age rating, privacy answers, what Apple may object to) is in the parent
 [`../README.md`](../README.md).
+
+## CarPlay (ships later, not in 1.0)
+
+The app now has a full CarPlay interface, but CarPlay audio needs an entitlement Apple
+grants **on request** — distribution signing fails without it. **Ship 1.0 without CarPlay**,
+request the entitlement, ship CarPlay in 1.1. Everything (how to test it in the simulator
+now, how to enable it later) is in [`../CARPLAY.md`](../CARPLAY.md).

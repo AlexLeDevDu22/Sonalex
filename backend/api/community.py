@@ -84,7 +84,11 @@ def accounts_info():
         server_name = None
     owners = [a["name"] for a in accounts.users().values() if a.get("admin")]
     return {"signups": SIGNUPS and accounts.multi_user_ready(), "serverName": server_name, "owner": owners[0] if owners else None,
-            "providers": {"spotify": SPOTIFY_SYNC and bool(client_id()), "deezer": SPOTIFY_SYNC, "none": True}}
+            # Spotify can be connected at sign-up by pasting a token (no dev-app invite needed), so
+            # it's offered whenever the sync module is on; `spotifyOAuth` says if the in-app Spotify
+            # sign-in is also available (the server set SPOTIFY_CLIENT_ID).
+            "providers": {"spotify": SPOTIFY_SYNC, "deezer": SPOTIFY_SYNC, "none": True},
+            "spotifyOAuth": SPOTIFY_SYNC and bool(client_id())}
 
 
 class SignUpBody(BaseModel):
@@ -92,6 +96,7 @@ class SignUpBody(BaseModel):
     password: str
     provider: str = "none"
     deezer: str | None = None
+    spotifyToken: str | None = None
 
 
 @router.post("/api/accounts/request")
@@ -103,7 +108,8 @@ async def account_request(body: SignUpBody, request: Request):
     if body.provider in ("spotify", "deezer") and not SPOTIFY_SYNC:
         body.provider = "none"
     try:
-        created = await run_in_threadpool(accounts.request_account, body.name, body.password, body.provider, body.deezer)
+        created = await run_in_threadpool(accounts.request_account, body.name, body.password, body.provider,
+                                          body.deezer, body.spotifyToken)
     except accounts.AccountError as e:
         _error(e)
     await HUB.notify(_admin_ids(), {"type": "accountRequest", "name": created["name"]})

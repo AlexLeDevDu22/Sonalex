@@ -76,6 +76,36 @@ def _load_user(slug: str) -> dict:
     raise SystemExit(f"SONALEX_USER={slug}: no such account in {ACCOUNTS_PATH}")
 
 
+def _spotify_token_usable(path: str) -> bool:
+    """True if `path` holds a real Spotify credential (chosic refresh token, or an OAuth token)."""
+    if not path:
+        return False
+    try:
+        import json
+
+        data = json.loads(Path(path).read_text(encoding="utf8"))
+    except (OSError, ValueError):
+        return False
+    return bool(data.get("access_token") or data.get("refresh_token")
+                or data.get("playlist_analyzer_refresh_token"))
+
+
+def _owner_spotify_token() -> str | None:
+    """The server owner's Spotify token file — the shared account lent, read-only, to users who
+    haven't connected a Spotify of their own (so search and downloads still work for them)."""
+    try:
+        import json
+
+        users = json.loads(ACCOUNTS_PATH.read_text(encoding="utf8")).get("users", {})
+    except (OSError, ValueError):
+        users = {}
+    for account in users.values():
+        if (account.get("legacy") or account.get("admin")) and _spotify_token_usable(account.get("spotifyToken") or ""):
+            return account["spotifyToken"]
+    default = str(BACKEND_DIR / "chosic_data.json")
+    return default if _spotify_token_usable(default) else None
+
+
 # The account this process works for (nightly sync, live sync, saving a song…); None = the server.
 USER = _load_user(os.environ["SONALEX_USER"]) if os.getenv("SONALEX_USER") else None
 if USER:
@@ -85,8 +115,19 @@ if USER:
     # Read by jellyfin.py / spotify.py / playlists.py at import (this module is imported first).
     os.environ["JELLYFIN_USER_ID"] = USER["id"]
     os.environ["SONALEX_LIBRARY_ID"] = USER.get("libraryId") or ""
-    os.environ["SONALEX_SPOTIFY_TOKEN"] = USER.get("spotifyToken") or ""
-    os.environ["SPOTIFY_USER_ID"] = USER.get("spotifyUser") or os.getenv("SPOTIFY_USER_ID", "")
+    # Spotify: the user's own token if they connected one; otherwise borrow the server owner's,
+    # READ-ONLY (search + downloads only — never synced, never writes to the owner's account).
+    _own = USER.get("spotifyToken") or ""
+    if _spotify_token_usable(_own):
+        os.environ["SONALEX_SPOTIFY_TOKEN"] = _own
+        os.environ["SPOTIFY_USER_ID"] = USER.get("spotifyUser") or os.getenv("SPOTIFY_USER_ID", "")
+        os.environ.pop("SONALEX_SPOTIFY_READONLY", None)
+    else:
+        _shared = _owner_spotify_token()
+        os.environ["SONALEX_SPOTIFY_TOKEN"] = _shared or ""
+        os.environ["SPOTIFY_USER_ID"] = ""  # never act on the owner's playlists/library
+        if _shared:
+            os.environ["SONALEX_SPOTIFY_READONLY"] = "1"
     if not USER.get("legacy"):
         LOG_DIR = Path(USER["home"]) / "logs"
         LOG_DIR.mkdir(parents=True, exist_ok=True)

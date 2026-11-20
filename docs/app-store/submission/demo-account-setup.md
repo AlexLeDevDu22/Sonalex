@@ -40,6 +40,8 @@ Password: Sonalex-Review-IEBc1
 
 Once that works, paste `review-notes.txt` into App Store Connect and submit.
 
-> Note: you wrote the server is `https://my-sonalex.garinio.com`. Double-check that's the
-> public domain that actually answers (earlier the stack was on `sonalex.garinio.com`).
-> Whatever the reviewer types in the app must match this exactly.
+> ✅ **Reachability (confirmed 2026-11-20)**: `my-sonalex.garinio.com` is live and public,
+> with a valid Let's Encrypt certificate — it reaches the Pi directly at your home IP
+> (`86.203.251.51`), no relay needed. Caddy serves both `my-sonalex` and `sonalex`.
+> Before the reviewer tries it, do a final check from OUTSIDE your home (phone on cellular):
+> `curl -I https://my-sonalex.garinio.com/sonalex/` should return HTTP 200 with a valid cert.

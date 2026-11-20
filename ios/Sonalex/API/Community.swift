@@ -254,10 +254,11 @@ final class Community {
     }
 
     static func requestAccount(server: String, name: String, password: String, service: MusicService,
-                               deezer: String?) async throws -> SignUp {
+                               deezer: String?, spotifyToken: String? = nil) async throws -> SignUp {
         struct R: Decodable { var id: String; var secret: String; var name: String }
         var body: [String: Any] = ["name": name, "password": password, "provider": service.rawValue]
         if let deezer { body["deezer"] = deezer }
+        if let spotifyToken, !spotifyToken.isEmpty { body["spotifyToken"] = spotifyToken }
         let r = try JSONDecoder().decode(R.self, from: try await call(server, "/api/accounts/request", method: "POST", body: body))
         return SignUp(server: server, id: r.id, secret: r.secret, name: r.name)
     }

@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.1"
+    CURRENT_PROJECT_VERSION: "2"
 targets:
   Sonalex:
     type: application
@@ -41,8 +41,17 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        # CarPlay (audio app): the car screen runs a CPTemplateApplicationScene driven by
+        # CarPlaySceneDelegate. Only the CarPlay scene is declared here — SwiftUI still provides
+        # the normal window scene on its own. Needs the com.apple.developer.carplay-audio
+        # entitlement (Apple grants it on request); without it the CarPlay scene simply never
+        # connects, so this is safe to ship before the entitlement is approved.
         UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations:
+            CPTemplateApplicationSceneSessionRoleApplication:
+              - UISceneConfigurationName: CarPlay
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).CarPlaySceneDelegate
         # The Jellyfin server is the user's own, at whatever address they type, often plain http://
         # (home servers rarely have a certificate). Don't add NSAllowsLocalNetworking: its presence
         # makes iOS ignore NSAllowsArbitraryLoads, which would block a public http:// address.

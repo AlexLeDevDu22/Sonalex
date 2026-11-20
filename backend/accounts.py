@@ -215,8 +215,23 @@ def deezer_profile(text: str) -> dict:
     return {"id": str(data["id"]), "name": data.get("name") or ""}
 
 
-def request_account(name: str, password: str, provider: str, deezer: str | None = None) -> dict:
-    """A new user asks to join. Returns {"id", "secret"}: the app follows its request with them."""
+def _write_spotify_token(path_str: str, refresh_token: str) -> None:
+    """Store a pasted Spotify token (the chosic 'playlist_analyzer_refresh_token' kind — the one a
+    user can get for their own account, no dev-app invite needed) in the user's file, owner-only."""
+    path = Path(path_str)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"playlist_analyzer_refresh_token": refresh_token.strip()}, indent=1), encoding="utf8")
+    tmp.chmod(0o600)
+    tmp.replace(path)
+
+
+def request_account(name: str, password: str, provider: str, deezer: str | None = None,
+                    spotify_token: str | None = None) -> dict:
+    """A new user asks to join. Returns {"id", "secret"}: the app follows its request with them.
+
+    `spotify_token`: an optional Spotify token pasted at sign-up (provider "spotify"); it's kept on
+    the request and written to the user's file when the owner approves them."""
     if not multi_user_ready():
         raise AccountError("This server isn't set up for several users yet.")
     name = _check_name(name)
@@ -245,6 +260,7 @@ def request_account(name: str, password: str, provider: str, deezer: str | None 
             data["requests"][request_id] = {
                 "id": request_id, "name": name, "jellyfinId": _plain(created["Id"]), "provider": provider,
                 "deezer": profile, "secret": hashlib.sha256(secret.encode()).hexdigest(),
+                "spotifyToken": (spotify_token or "").strip() or None,
                 "createdAt": time.time(), "status": "pending",
             }
     print(f"[accounts] demande de {name} ({provider})", flush=True)
@@ -291,10 +307,14 @@ def approve(request_id: str) -> dict:
             "spotifyToken": str(home / "spotify.json"), "libraryId": library_id,
             "createdAt": time.time(), "visible": True,
         }
+        token = request.get("spotifyToken")
+        if token and account["provider"] == "spotify":
+            _write_spotify_token(account["spotifyToken"], token)
         with _editing() as data:
             data["users"][account["id"]] = account
             data["requests"][request_id]["status"] = "approved"
             data["requests"][request_id]["decidedAt"] = time.time()
+            data["requests"][request_id].pop("spotifyToken", None)  # written to the user's file now
         isolate_libraries()
         _set_policy(account["id"], disabled=False)
     print(f"[accounts] {name} accepté·e : bibliothèque {music}", flush=True)

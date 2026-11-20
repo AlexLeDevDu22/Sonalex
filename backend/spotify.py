@@ -29,6 +29,12 @@ except FileNotFoundError:
     # No Spotify account token: what doesn't need one (covers, the catalog with its own keys) works.
     chosic_data = {}
 
+# Read-only mode: when a user has no Spotify of their own, config.py points this process at the
+# server owner's shared Spotify, but READ-ONLY. Searches and song downloads (GET) work; anything
+# that would change the owner's account (likes, playlist add/remove/create/rename) is refused, so
+# a user without Spotify can never touch the owner's playlists, and is never synced.
+READONLY = os.getenv("SONALEX_SPOTIFY_READONLY") == "1"
+
 SPOTIFY_USER_ID = os.getenv("SPOTIFY_USER_ID")
 
 # ---------------------------------------------------------------------------
@@ -135,6 +141,10 @@ def _auth_headers():
 def spotify_request(method: str, path: str, **kwargs) -> requests.Response:
     """Spotify Web API call with retries: network errors, 5xx, 429 (Retry-After) and an expired
     token (401 → refresh once)."""
+    if READONLY and method.upper() != "GET":
+        raise PermissionError(
+            "Spotify is read-only for this user: it borrows the server owner's account for search "
+            "and downloads only, so it can't change likes or playlists.")
     url = path if path.startswith("http") else f"https://api.spotify.com/v1{path}"
     refreshed = False
     response = None
