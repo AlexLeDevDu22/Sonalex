@@ -46,6 +46,7 @@ struct TrackRow: View {
                         }
                     }
                     Spacer(minLength: 4)
+                    FriendListeningBadge(trackId: track.id)
                     if OfflineStore.shared.isDownloaded(track) {
                         // On this iPhone / Mac: plays instantly, even offline.
                         Image(systemName: "arrow.down.circle.fill")
@@ -94,7 +95,7 @@ struct TrackRow: View {
             Button {
                 player.addToQueue([track])
                 ToastCenter.shared.show("Added to Queue", systemImage: "text.line.last.and.arrowtriangle.forward")
-            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            } label: { Label("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") }
                 .tint(.orange)
         }
     }
@@ -122,6 +123,31 @@ struct TrackRow: View {
             .frame(width: 48, height: 48)
         case .none:
             EmptyView()
+        }
+    }
+}
+
+/// A small live badge on a song row: a friend on the server is listening to this exact song now.
+struct FriendListeningBadge: View {
+    let trackId: String
+    @State private var community = Community.shared
+
+    var body: some View {
+        let who = community.listeningByItem[trackId] ?? []
+        if let first = who.first {
+            HStack(spacing: 4) {
+                EqualizerBars(animating: true, color: Color.appAccent)
+                    .frame(width: 18, height: 14)
+                Text(who.count > 1 ? "\(who.count)" : String(first.name.prefix(1)))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.appAccent)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Color.appAccent.opacity(0.14), in: Capsule())
+            .transition(.scale.combined(with: .opacity))
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: who.count)
+            .accessibilityLabel(who.count > 1 ? "\(who.count) friends are listening" : "\(first.name) is listening")
         }
     }
 }

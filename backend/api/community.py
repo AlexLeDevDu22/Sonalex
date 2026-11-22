@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import accounts
-from config import DATA_DIR, JELLYFIN_URL, ONLINE, SIGNUPS, SPOTIFY_SYNC
+from config import CONFIG, DATA_DIR, JELLYFIN_URL, ONLINE, SIGNUPS, SPOTIFY_SYNC
 
 from . import social
 from .auth import Auth, admin, auth
@@ -140,7 +140,9 @@ def me(a: Auth = Depends(auth)):
     account = _me(a)
     return {**_public(account), "visible": account.get("visible", True),
             "spotifyConnected": Path(account.get("spotifyToken") or "/nonexistent").exists(),
-            "deezerName": account.get("deezerName"), "pending": len(accounts.pending_requests()) if account.get("admin") else 0}
+            "deezerName": account.get("deezerName"),
+            "onlyLiked": bool(account.get("onlyLiked", CONFIG.getboolean("PROCESS", "ONLY_LIKED"))),
+            "pending": len(accounts.pending_requests()) if account.get("admin") else 0}
 
 
 class PlayBody(BaseModel):
@@ -222,6 +224,22 @@ async def me_deezer(body: DeezerBody, a: Auth = Depends(auth)):
     return profile
 
 
+class LibraryScopeBody(BaseModel):
+    onlyLiked: bool
+
+
+@router.put("/api/me/library-scope")
+def me_library_scope(body: LibraryScopeBody, a: Auth = Depends(auth)):
+    """Keep only liked songs (to save space), or the user's whole library. Changing it re-syncs:
+    turning it off downloads everything that was skipped; turning it on prunes on the next sync."""
+    account = _me(a)
+    accounts.update(account["id"], onlyLiked=body.onlyLiked)
+    syncing = account.get("provider") in ("spotify", "deezer")
+    if syncing:
+        _sync_soon(account["slug"])
+    return {"onlyLiked": body.onlyLiked, "syncing": syncing}
+
+
 @router.post("/api/me/sync", status_code=202)
 def me_sync(a: Auth = Depends(auth)):
     """Sync now (Spotify / Deezer) instead of waiting for the night."""
@@ -276,8 +294,15 @@ def social_users(a: Auth = Depends(auth)):
     for uid, account in accounts.users().items():
         if not account.get("visible", True) and uid != a.user_id:
             continue
+        now = HUB.now_playing(uid)
+        # The viewer's own copy of the song a friend is playing (same file), so their library and
+        # playlists can light up the row that's playing right now on another device.
+        if now and now.get("itemId") and uid != a.user_id:
+            own = social.own_item(a.user_id, now["itemId"])
+            if own:
+                now = {**now, "yourItemId": own}
         out.append({**_public(account), "isMe": uid == a.user_id, "weekMinutes": week.get(uid, 0),
-                    "nowPlaying": HUB.now_playing(uid), "moment": social.moment(uid)})
+                    "nowPlaying": now, "moment": social.moment(uid)})
     return {"users": sorted(out, key=lambda u: (not u["isMe"], u["nowPlaying"] is None, -u["weekMinutes"]))}
 
 
@@ -321,6 +346,9 @@ async def social_user(user_id: str, a: Auth = Depends(auth)):
 @router.get("/api/social/track/{item_id}")
 async def social_track(item_id: str, a: Auth = Depends(auth)):
     """Who else has this song (one of the viewer's), and who likes it."""
+    # Only answer for a song the viewer actually has, so item ids can't be probed across libraries.
+    if not await run_in_threadpool(social.own_item, a.user_id, item_id):
+        return {"users": []}
     return {"users": await run_in_threadpool(social.who_has, item_id, a.user_id, accounts.users())}
 
 

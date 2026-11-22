@@ -202,11 +202,22 @@ class Library:
         except Exception as e:
             print("[library] library refresh failed:", e)
 
-    def wait_for_item(self, path: str, timeout: float = 90) -> str | None:
+    @staticmethod
+    def full_refresh():
+        """A whole-server library scan. Last resort: Jellyfin skips a library whose folder was
+        empty when it was created (a brand-new user's), and a per-library refresh won't wake it —
+        only a full scan does. So a new user's very first added song gets indexed."""
+        try:
+            jf_request("POST", "/Library/Refresh", admin=True)
+        except Exception as e:
+            print("[library] full refresh failed:", e)
+
+    def wait_for_item(self, path: str, timeout: float = 120) -> str | None:
         """After writing a file into the library, waits until Jellyfin has indexed it (with metadata)."""
         norm = Path(path).as_posix()
         start = time.time()
-        full_refresh_sent = False
+        library_refreshed = False
+        full_scanned = False
         while time.time() - start < timeout:
             with self._lock:
                 try:
@@ -222,10 +233,16 @@ class Library:
                         break
                     time.sleep(0.5)
                 return item
-            if not full_refresh_sent and time.time() - start > 25:
-                # The targeted scan didn't catch it: scan the whole library it's in.
+            elapsed = time.time() - start
+            if not library_refreshed and elapsed > 20:
+                # The targeted folder scan didn't catch it: rescan the whole library it's in.
                 self.refresh_library_of(path)
-                full_refresh_sent = True
+                library_refreshed = True
+            elif not full_scanned and elapsed > 45:
+                # Still nothing: the library was likely created empty and skipped by Jellyfin
+                # (a new user's first song) — only a full scan wakes it.
+                self.full_refresh()
+                full_scanned = True
             time.sleep(1.5)
         return None
 

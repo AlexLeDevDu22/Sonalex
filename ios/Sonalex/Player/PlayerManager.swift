@@ -6,15 +6,31 @@ import UIKit
 struct QueueEntry: Identifiable, Codable, Hashable {
     let id: UUID
     let track: Item
+    /// true when the user put this song here on purpose ("Play Next" / "Add to Queue"): it waits in
+    /// its own queue, ahead of the songs that come up on their own (the rest of the playlist, the
+    /// station, autoplay…). false for those automatic songs.
+    var manual: Bool
 
-    init(_ track: Item) {
+    init(_ track: Item, manual: Bool = false) {
         id = UUID()
         self.track = track
+        self.manual = manual
     }
 
-    init(id: UUID, track: Item) {
+    init(id: UUID, track: Item, manual: Bool = false) {
         self.id = id
         self.track = track
+        self.manual = manual
+    }
+
+    enum CodingKeys: String, CodingKey { case id, track, manual }
+
+    // Tolerant decode: a queue saved by an older build has no `manual` key — those songs are automatic.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        track = try c.decode(Item.self, forKey: .track)
+        manual = (try? c.decode(Bool.self, forKey: .manual)) ?? false
     }
 }
 
@@ -359,6 +375,19 @@ final class PlayerManager {
     }
     var currentEntry: QueueEntry? { queue.indices.contains(index) ? queue[index] : nil }
     var upcoming: [QueueEntry] { queue.indices.contains(index) ? Array(queue[(index + 1)...]) : [] }
+    /// Songs the user queued by hand ("Play Next" / "Add to Queue"): they play before the automatic
+    /// up-next. They always sit contiguously right after the current song, so a filter keeps order.
+    var manualUpcoming: [QueueEntry] { upcoming.filter(\.manual) }
+    /// What plays on its own after the hand-queued songs: the rest of the playlist/station, autoplay.
+    var autoUpcoming: [QueueEntry] { upcoming.filter { !$0.manual } }
+
+    /// Index in `queue` just past the current song and any songs already queued by hand — where the
+    /// next hand-queued song goes, ahead of the automatic up-next.
+    private var manualQueueEnd: Int {
+        var i = index + 1
+        while queue.indices.contains(i), queue[i].manual { i += 1 }
+        return i
+    }
 
     // MARK: Private
 
@@ -716,7 +745,7 @@ final class PlayerManager {
                 }
             }
         }
-        var entries = playable.map(QueueEntry.init)
+        var entries = playable.map { QueueEntry($0) }
         var start = min(max(startAt, 0), entries.count - 1)
         // startAt refers to the unfiltered list; map it onto the filtered one.
         if playable.count != tracks.count, tracks.indices.contains(startAt),
@@ -845,7 +874,7 @@ final class PlayerManager {
     /// (favorites, playlists…), without interrupting playback.
     func replaceTrack(key: String, with item: Item) {
         func swap(_ entries: [QueueEntry]) -> [QueueEntry] {
-            entries.map { $0.track.externalKey == key ? QueueEntry(id: $0.id, track: item) : $0 }
+            entries.map { $0.track.externalKey == key ? QueueEntry(id: $0.id, track: item, manual: $0.manual) : $0 }
         }
         queue = swap(queue)
         originalOrder = originalOrder.map(swap)
@@ -967,9 +996,10 @@ final class PlayerManager {
 
     func playNext(_ tracks: [Item]) {
         if forward(.playNext(tracks)) { return }
-        let entries = tracks.filter(\.isSong).map(QueueEntry.init)
+        let entries = tracks.filter(\.isSong).map { QueueEntry($0, manual: true) }
         guard !entries.isEmpty else { return }
         if queue.isEmpty { play(tracks); return }
+        // Front of the hand-queue: right after the current song.
         queue.insert(contentsOf: entries, at: index + 1)
         if var orig = originalOrder, let cur = currentEntry, let pos = orig.firstIndex(of: cur) {
             orig.insert(contentsOf: entries, at: pos + 1)
@@ -981,11 +1011,15 @@ final class PlayerManager {
 
     func addToQueue(_ tracks: [Item]) {
         if forward(.addToQueue(tracks)) { return }
-        let entries = tracks.filter(\.isSong).map(QueueEntry.init)
+        let entries = tracks.filter(\.isSong).map { QueueEntry($0, manual: true) }
         guard !entries.isEmpty else { return }
         if queue.isEmpty { play(tracks); return }
-        queue.append(contentsOf: entries)
-        originalOrder?.append(contentsOf: entries)
+        // Back of the hand-queue, but still ahead of the automatic up-next.
+        queue.insert(contentsOf: entries, at: manualQueueEnd)
+        if var orig = originalOrder, let cur = currentEntry, let pos = orig.firstIndex(of: cur) {
+            orig.insert(contentsOf: entries, at: pos + 1)
+            originalOrder = orig
+        }
         refreshNextItem()
         persist()
     }
@@ -1020,12 +1054,30 @@ final class PlayerManager {
         persist()
     }
 
+    /// Reorder within the automatic up-next (offsets relative to `autoUpcoming`): shift them past
+    /// the hand-queued songs so the two queues never cross.
+    func moveAutoUpcoming(from source: IndexSet, to destination: Int) {
+        let base = manualUpcoming.count
+        moveUpcoming(from: IndexSet(source.map { $0 + base }), to: destination + base)
+    }
+
     func clearUpcoming() {
         if forward(.clearUpcoming) { return }
         guard queue.indices.contains(index) else { return }
         let removed = Set(upcoming.map(\.id))
         queue = Array(queue[...index])
         originalOrder?.removeAll { removed.contains($0.id) }
+        refreshNextItem()
+        persist()
+    }
+
+    /// Clears only the songs queued by hand; the automatic up-next stays.
+    func clearManualQueue() {
+        let ids = Set(manualUpcoming.map(\.id))
+        guard !ids.isEmpty else { return }
+        if forward(.remove(Array(ids))) { return }
+        queue.removeAll { ids.contains($0.id) }
+        originalOrder?.removeAll { ids.contains($0.id) }
         refreshNextItem()
         persist()
     }
@@ -1043,7 +1095,8 @@ final class PlayerManager {
         } else {
             originalOrder = queue
             let head = Array(queue[...index])
-            queue = head + SmartShuffle.order(upcoming)
+            // The hand-queue keeps its order and its place at the front; only the automatic up-next shuffles.
+            queue = head + manualUpcoming + SmartShuffle.order(autoUpcoming)
             shuffle = true
         }
         refreshNextItem()
@@ -1247,7 +1300,7 @@ final class PlayerManager {
             defer { isLoadingRadio = false }
             guard let more = try? await SonalexAPI.shared.radio(seed: seed, recent: recent, limit: 25) else { return }
             var known = Set(queue.map { ListeningHistory.signature($0.track) })
-            let entries = more.filter { known.insert(ListeningHistory.signature($0)).inserted }.map(QueueEntry.init)
+            let entries = more.filter { known.insert(ListeningHistory.signature($0)).inserted }.map { QueueEntry($0) }
             guard autoplay, !entries.isEmpty else { return }
             queue.append(contentsOf: entries)
             originalOrder?.append(contentsOf: entries)

@@ -31,7 +31,7 @@ struct ItemMenu: View {
             } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
             Button {
                 withTracks { player.addToQueue($0); toast.show("Added to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") }
-            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            } label: { Label("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") }
         }
 
         Section {

@@ -11,67 +11,90 @@ struct MiniPlayerView: View {
     @Environment(PlayerManager.self) private var player
     @Environment(\.colorScheme) private var localScheme
 
+    /// How far the bar's content is dragged sideways right now (follows the finger, rubber-banded).
+    @State private var dragX: CGFloat = 0
+
+    private let skipThreshold: CGFloat = 60
+
     var body: some View {
         let track = player.current
-        HStack(spacing: 12) {
-            ArtworkView(item: track, points: 44, cornerRadius: floating ? 7 : 20, circle: !floating)
-                .overlay {
-                    // Mix: the old cover slides out to the left while the new one is heard coming in.
-                    if let outgoing = player.mixOutgoing, let p = player.mixProgress {
-                        ArtworkView(item: outgoing, points: 44, cornerRadius: floating ? 7 : 20, circle: !floating)
-                            .offset(x: -14 * p)
-                            .scaleEffect(1 - 0.3 * p)
-                            .opacity(1 - p)
-                            .animation(.linear(duration: 0.15), value: p)
-                    }
-                }
-                .frame(width: floating ? 44 : 32, height: floating ? 44 : 32)
-                .overlay {
-                    if player.isBuffering && track != nil {
-                        ProgressView().tint(.white).controlSize(.small)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: floating ? 7 : 20))
-                    }
-                }
-                .matchedTransitionSource(id: "nowPlayingArtwork", in: namespace)
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        // Progress toward a skip (0…1) for each direction: left reveals "next", right "previous".
+        let nextProgress = max(0, min(-dragX / skipThreshold, 1))
+        let prevProgress = max(0, min(dragX / skipThreshold, 1))
+        let armed = abs(dragX) >= skipThreshold
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(track?.title ?? "Not Playing")
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                if ConnectManager.shared.isRemote {
-                    RemotePlaybackBadge()
-                } else if let artist = track?.artistLine, !artist.isEmpty {
-                    Text(artist)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+        ZStack {
+            // Behind the content: the skip hint that grows as you drag and snaps bright past the threshold.
+            HStack {
+                skipHint(systemImage: "backward.fill", progress: prevProgress)
+                Spacer()
+                skipHint(systemImage: "forward.fill", progress: nextProgress)
+            }
+            .padding(.horizontal, floating ? 18 : 16)
+
+            HStack(spacing: 12) {
+                ArtworkView(item: track, points: 44, cornerRadius: floating ? 7 : 20, circle: !floating)
+                    .overlay {
+                        // Mix: the old cover slides out to the left while the new one is heard coming in.
+                        if let outgoing = player.mixOutgoing, let p = player.mixProgress {
+                            ArtworkView(item: outgoing, points: 44, cornerRadius: floating ? 7 : 20, circle: !floating)
+                                .offset(x: -14 * p)
+                                .scaleEffect(1 - 0.3 * p)
+                                .opacity(1 - p)
+                                .animation(.linear(duration: 0.15), value: p)
+                        }
+                    }
+                    .frame(width: floating ? 44 : 32, height: floating ? 44 : 32)
+                    .overlay {
+                        if player.isBuffering && track != nil {
+                            ProgressView().tint(.white).controlSize(.small)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: floating ? 7 : 20))
+                        }
+                    }
+                    .matchedTransitionSource(id: "nowPlayingArtwork", in: namespace)
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(track?.title ?? "Not Playing")
+                        .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
+                    if ConnectManager.shared.isRemote {
+                        RemotePlaybackBadge()
+                    } else if let artist = track?.artistLine, !artist.isEmpty {
+                        Text(artist)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button { player.togglePlayPause() } label: {
-                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 21))
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 38, height: 38)
-                    .contentShape(Rectangle())
-            }
-            .disabled(track == nil)
+                Button { player.togglePlayPause() } label: {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 21))
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: 38, height: 38)
+                        .contentShape(Rectangle())
+                }
+                .disabled(track == nil)
 
-            Button { player.next() } label: {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 19))
-                    .frame(width: 38, height: 38)
-                    .contentShape(Rectangle())
+                Button { player.next() } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 19))
+                        .frame(width: 38, height: 38)
+                        .contentShape(Rectangle())
+                }
+                .disabled(track == nil)
             }
-            .disabled(track == nil)
+            .buttonStyle(PressableStyle(scale: 0.85))
+            .foregroundStyle(.primary)
+            .padding(.leading, floating ? 8 : 10)
+            .padding(.trailing, floating ? 10 : 8)
+            // Follows the finger; the artwork tips slightly toward the skip for a bit of life.
+            .offset(x: dragX)
+            .rotationEffect(.degrees(Double(dragX) * 0.03), anchor: .center)
         }
-        .buttonStyle(PressableStyle(scale: 0.85))
-        .foregroundStyle(.primary)
-        .padding(.leading, floating ? 8 : 10)
-        .padding(.trailing, floating ? 10 : 8)
         .frame(height: floating ? 60 : nil)
         .background {
             if floating {
@@ -80,21 +103,63 @@ struct MiniPlayerView: View {
                     .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
             }
         }
+        .clipShape(RoundedRectangle(cornerRadius: floating ? 16 : 0, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture {
             guard track != nil else { return }
             player.showNowPlaying = true
         }
         .gesture(
-            DragGesture(minimumDistance: 20).onEnded { v in
-                guard track != nil else { return }
-                if v.translation.height < -30 { player.showNowPlaying = true }
-                else if v.translation.width < -60 { player.next() }
-                else if v.translation.width > 60 { player.previous() }
-            }
+            DragGesture(minimumDistance: 12)
+                .onChanged { v in
+                    guard track != nil else { return }
+                    // Horizontal intent only — let vertical drags fall through to "open Now Playing".
+                    guard abs(v.translation.width) > abs(v.translation.height) else { dragX = 0; return }
+                    dragX = rubberBand(v.translation.width)
+                }
+                .onEnded { v in
+                    guard track != nil else { dragX = 0; return }
+                    let w = v.translation.width, h = v.translation.height
+                    if h < -30, abs(w) < 40 {
+                        resetDrag()
+                        player.showNowPlaying = true
+                    } else if w < -skipThreshold {
+                        player.next()
+                        resetDrag()
+                    } else if w > skipThreshold {
+                        player.previous()
+                        resetDrag()
+                    } else {
+                        resetDrag()
+                    }
+                }
         )
         .sensoryFeedback(.impact(weight: .light), trigger: player.current?.id)
+        .sensoryFeedback(.selection, trigger: armed)  // a tick the moment the swipe is far enough to skip
         .environment(\.colorScheme, appScheme ?? localScheme)
+    }
+
+    /// The directional glyph revealed behind the bar while swiping.
+    private func skipHint(systemImage: String, progress: CGFloat) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .heavy))
+            .foregroundStyle(.primary)
+            .opacity(progress * 0.9)
+            .scaleEffect(0.6 + 0.6 * progress)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: progress >= 1)
+    }
+
+    /// Softens the drag past the threshold so the bar leans rather than flies off.
+    private func rubberBand(_ x: CGFloat) -> CGFloat {
+        let limit: CGFloat = 96
+        let s = x * 0.75
+        guard abs(s) > limit else { return s }
+        let over = abs(s) - limit
+        return (s < 0 ? -1 : 1) * (limit + over * 0.2)
+    }
+
+    private func resetDrag() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) { dragX = 0 }
     }
 }
 

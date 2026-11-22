@@ -112,6 +112,12 @@ if USER:
     CONFIG.set("PATHS", "JELLYFIN_PATH", USER["music"])
     CONFIG.set("PATHS", "TRACKS_JSON", USER["tracks"])
     CONFIG.set("PATHS", "PLAYLISTS_JSON", USER["playlists"])
+    # Library scope, per user: ONLY_LIKED keeps just the liked songs (and the liked tracks of
+    # synced playlists) to save space; off, the user's whole library — every saved song and every
+    # playlist — comes in. A per-user choice overrides the server default (config.ini); absent, the
+    # default stays, so existing accounts keep the behaviour they had.
+    if USER.get("onlyLiked") is not None:
+        CONFIG.set("PROCESS", "ONLY_LIKED", "True" if USER["onlyLiked"] else "False")
     # Read by jellyfin.py / spotify.py / playlists.py at import (this module is imported first).
     os.environ["JELLYFIN_USER_ID"] = USER["id"]
     os.environ["SONALEX_LIBRARY_ID"] = USER.get("libraryId") or ""

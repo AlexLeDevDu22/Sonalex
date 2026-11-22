@@ -81,6 +81,7 @@ struct MeInfo: Decodable {
     var visible: Bool?
     var spotifyConnected: Bool?
     var deezerName: String?
+    var onlyLiked: Bool?
     var pending: Int?
 }
 
@@ -114,6 +115,11 @@ final class Community {
     private(set) var me: MeInfo?
     private(set) var users: [SocialUser] = []
     private(set) var requests: [AccessRequest] = []
+    /// The viewer's own item id of a song a friend is playing right now → those friends. Lets any
+    /// library or playlist row light up when someone else is listening to that exact song.
+    private(set) var listeningByItem: [String: [SocialUser]] = [:]
+
+    @ObservationIgnored private var presenceTask: Task<Void, Never>?
 
     var isAdmin: Bool { me?.admin == true }
     var friends: [SocialUser] { users.filter { $0.isMe != true } }
@@ -133,6 +139,27 @@ final class Community {
         struct R: Decodable { var users: [SocialUser] }
         guard ServerFeatures.shared.accounts, let r: R = try? await SonalexAPI.shared.fetch("/api/social/users") else { return }
         users = r.users
+        var map: [String: [SocialUser]] = [:]
+        for u in r.users where u.isMe != true {
+            if let id = u.nowPlaying?.yourItemId { map[id, default: []].append(u) }
+        }
+        listeningByItem = map
+    }
+
+    /// While the app is active, keep friends' "now playing" fresh so the live highlights stay current.
+    func startPresence() {
+        guard ServerFeatures.shared.accounts, presenceTask == nil else { return }
+        presenceTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.refreshUsers()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+    }
+
+    func stopPresence() {
+        presenceTask?.cancel()
+        presenceTask = nil
     }
 
     /// The owner's pending requests; a notification for each one not seen yet (the app may have
@@ -168,6 +195,12 @@ final class Community {
 
     func setVisible(_ visible: Bool) async {
         _ = try? await SonalexAPI.shared.send("/api/me/visible", method: "PUT", body: ["visible": visible])
+        await refreshMe()
+    }
+
+    /// Keep only liked songs (saves space), or sync the whole library. The server re-syncs after.
+    func setOnlyLiked(_ onlyLiked: Bool) async {
+        _ = try? await SonalexAPI.shared.send("/api/me/library-scope", method: "PUT", body: ["onlyLiked": onlyLiked])
         await refreshMe()
     }
 

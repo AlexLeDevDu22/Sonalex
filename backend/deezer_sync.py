@@ -17,7 +17,7 @@ import requests
 
 import jellyfin
 import local_song
-from config import USER
+from config import CONFIG, USER
 from downloading import download_song
 from song import Song
 
@@ -83,15 +83,18 @@ def sync() -> dict:
         raise RuntimeError("No Deezer profile for this user")
     state = _load_state()
 
+    only_liked = CONFIG.getboolean("PROCESS", "ONLY_LIKED")
+
     print("[Deezer] Coups de cœur…")
     favorites = [str(t["id"]) for t in _all(f"/user/{deezer_id}/tracks") if t.get("readable", True)]
     playlists = {}
-    for p in _all(f"/user/{deezer_id}/playlists"):
-        if p.get("is_loved_track"):
-            continue  # the favorites, already above
-        playlists[str(p["id"])] = {"name": p.get("title") or "Playlist",
-                                   "tracks": [str(t["id"]) for t in _all(f"/playlist/{p['id']}/tracks")
-                                              if t.get("readable", True)]}
+    if not only_liked:  # the whole library: every playlist too (not just the favorites)
+        for p in _all(f"/user/{deezer_id}/playlists"):
+            if p.get("is_loved_track"):
+                continue  # the favorites, already above
+            playlists[str(p["id"])] = {"name": p.get("title") or "Playlist",
+                                       "tracks": [str(t["id"]) for t in _all(f"/playlist/{p['id']}/tracks")
+                                                  if t.get("readable", True)]}
     wanted = list(dict.fromkeys(favorites + [t for p in playlists.values() for t in p["tracks"]]))
     if not wanted and (state.get("favorites") or state.get("playlists")):
         # A profile turned private reads as empty: never take that as "remove everything".

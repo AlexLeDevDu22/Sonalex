@@ -434,6 +434,7 @@ struct MusicServiceView: View {
     @State private var deezer = ""
     @State private var working = false
     @State private var visible = true
+    @State private var onlyLiked = true
 
     var body: some View {
         NavigationStack {
@@ -469,6 +470,18 @@ struct MusicServiceView: View {
                 }
                 if let provider = community.me?.provider, provider != "none" {
                     Section {
+                        Toggle("Only Liked Songs", isOn: $onlyLiked)
+                            .onChange(of: onlyLiked) { _, value in
+                                Task {
+                                    await community.setOnlyLiked(value)
+                                    ToastCenter.shared.show(value ? "Keeping only liked songs" : "Syncing your whole library…",
+                                                            systemImage: "arrow.triangle.2.circlepath")
+                                }
+                            }
+                    } footer: {
+                        Text("On, only your liked songs (and the liked tracks of your playlists) are kept, to save space. Off, your whole library comes in — every saved song and every playlist. Changing this re-syncs now.")
+                    }
+                    Section {
                         Button("Sync Now") {
                             run {
                                 _ = try await SonalexAPI.shared.send("/api/me/sync", method: "POST")
@@ -491,6 +504,7 @@ struct MusicServiceView: View {
             .task {
                 await community.refreshMe()
                 visible = community.me?.visible ?? true
+                onlyLiked = community.me?.onlyLiked ?? true
             }
         }
     }

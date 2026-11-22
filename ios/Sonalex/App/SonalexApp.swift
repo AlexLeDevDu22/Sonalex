@@ -53,13 +53,19 @@ struct RootView: View {
             UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
             SocialReporter.shared.start()
             await ServerFeatures.shared.refresh()
+            Community.shared.startPresence()
             // Songs on this device: offline playlists follow their changes, automatic downloads.
             await OfflineStore.shared.syncPlaylists()
             await OfflineStore.shared.autoSync()
         }
         .onChange(of: scenePhase) { _, phase in
-            // Back to the app: anyone asking to join meanwhile?
-            if phase == .active, session.session != nil { Task { await Community.shared.refreshRequests() } }
+            // Back to the app: anyone asking to join meanwhile? Keep friends' presence live too.
+            if phase == .active, session.session != nil {
+                Task { await Community.shared.refreshRequests() }
+                Community.shared.startPresence()
+            } else if phase == .background {
+                Community.shared.stopPresence()
+            }
         }
         .onOpenURL { NowPlayingExport.handle($0) }
     }

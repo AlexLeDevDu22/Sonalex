@@ -119,44 +119,44 @@ struct QueueView: View {
 
     var body: some View {
         List {
-            Section {
-                ForEach(player.upcoming) { entry in
-                    QueueRow(track: entry.track)
-                        .contentShape(Rectangle())
-                        .onTapGesture { player.jump(to: entry.id) }
-                        .contextMenu {
-                            Button(role: .destructive) { player.removeUpcoming(id: entry.id) } label: {
-                                Label("Remove from Queue", systemImage: "minus.circle")
-                            }
+            let manual = player.manualUpcoming
+            if manual.isEmpty {
+                // Just the automatic up-next: one section, controls in its header.
+                Section {
+                    autoRows
+                } header: {
+                    controls(title: "Up Next", subtitle: player.sourceName.map { "Playing from \($0)" })
+                }
+            } else {
+                // The hand-queued songs first, in their own section (reorderable), then the auto up-next.
+                Section {
+                    ForEach(manual) { entry in queueRow(entry) }
+                        .onMove { player.moveUpcoming(from: $0, to: $1) }
+                } header: {
+                    controls(title: "Queue", subtitle: "\(manual.count) song\(manual.count == 1 ? "" : "s") you added")
+                }
+                if !player.autoUpcoming.isEmpty || player.isLoadingRadio {
+                    Section {
+                        autoRows
+                    } header: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "text.append").font(.caption)
+                            Text(player.sourceName.map { "Next up · \($0)" } ?? "Next up")
+                                .font(.subheadline.weight(.semibold))
                         }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparatorTint(.white.opacity(0.15))
-                        .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 20))
-                }
-                .onMove { player.moveUpcoming(from: $0, to: $1) }
-
-                if player.isLoadingRadio {
-                    HStack(spacing: 10) {
-                        ProgressView().tint(.white).controlSize(.small)
-                        Text("Autoplay: finding songs…")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .textCase(nil)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        .listRowInsets(EdgeInsets())
                     }
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 10, leading: 28, bottom: 10, trailing: 20))
-                } else if player.upcoming.isEmpty {
-                    Text("Nothing up next")
-                        .foregroundStyle(.white.opacity(0.5))
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 20))
                 }
-            } header: {
-                header
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .environment(\.editMode, .constant(.active))
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: player.manualUpcoming.count)
         .mask(
             LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.92),
                                    .init(color: .clear, location: 1)],
@@ -164,14 +164,48 @@ struct QueueView: View {
         )
     }
 
-    private var header: some View {
+    @ViewBuilder private var autoRows: some View {
+        ForEach(player.autoUpcoming) { entry in queueRow(entry) }
+            .onMove { player.moveAutoUpcoming(from: $0, to: $1) }
+        if player.isLoadingRadio {
+            HStack(spacing: 10) {
+                ProgressView().tint(.white).controlSize(.small)
+                Text("Autoplay: finding songs…")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 10, leading: 28, bottom: 10, trailing: 20))
+        } else if player.upcoming.isEmpty {
+            Text("Nothing up next")
+                .foregroundStyle(.white.opacity(0.5))
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 20))
+        }
+    }
+
+    private func queueRow(_ entry: QueueEntry) -> some View {
+        QueueRow(track: entry.track, manual: entry.manual)
+            .contentShape(Rectangle())
+            .onTapGesture { player.jump(to: entry.id) }
+            .contextMenu {
+                Button(role: .destructive) { player.removeUpcoming(id: entry.id) } label: {
+                    Label("Remove from Queue", systemImage: "minus.circle")
+                }
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparatorTint(.white.opacity(0.15))
+            .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 20))
+    }
+
+    private func controls(title: String, subtitle: String?) -> some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Up Next")
+                Text(title)
                     .font(.headline)
                     .foregroundStyle(.white)
-                if let source = player.sourceName {
-                    Text("Playing from \(source)")
+                if let subtitle {
+                    Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.55))
                         .lineLimit(1)
@@ -195,8 +229,13 @@ struct QueueView: View {
                 }
             }
             Menu {
+                if !player.manualUpcoming.isEmpty {
+                    Button { player.clearManualQueue() } label: {
+                        Label("Clear Queue", systemImage: "text.badge.minus")
+                    }
+                }
                 Button(role: .destructive) { player.clearUpcoming() } label: {
-                    Label("Clear Queue", systemImage: "trash")
+                    Label("Clear All Up Next", systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -227,6 +266,7 @@ struct QueueView: View {
 
 private struct QueueRow: View {
     let track: Item
+    var manual: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -243,6 +283,12 @@ private struct QueueRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
+            if manual {
+                // Marks a song the user queued by hand, so it reads apart from the automatic up-next.
+                Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
         }
     }
 }
